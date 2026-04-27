@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Studio | Ultimate Print</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Noto+Sans+TC:wght@300;400;500&family=Libre+Barcode+39&display=swap" rel="stylesheet">
     <style>
         :root {
             --accent: #00f2fe;
@@ -16,7 +16,6 @@
             --text-sub: #888888;
         }
 
-        /* 動態流體背景 */
         body {
             font-family: 'Montserrat', 'Noto Sans TC', sans-serif;
             margin: 0; padding: 20px; min-height: 100vh;
@@ -25,244 +24,408 @@
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
             display: flex; justify-content: center; align-items: center;
+            overflow-x: hidden;
+            perspective: 2000px;
         }
         @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
-        /* Bento Grid 緊湊佈局核心 */
+        @keyframes springPopIn { 
+            0% { opacity: 0; transform: translateY(40px) scale(0.9); } 
+            60% { opacity: 1; transform: translateY(-5px) scale(1.02); } 
+            100% { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+
+        /* VIP 會員彈窗 (清晰圖片版) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        .modal-content {
+            background: rgba(15, 15, 20, 0.95); border: 1px solid var(--accent);
+            padding: 40px; border-radius: 24px; text-align: center; max-width: 400px;
+            box-shadow: 0 0 50px var(--accent-glow);
+            position: relative; overflow: hidden; 
+        }
+        /* 清晰的廣告圖，不再被霧化 */
+        .modal-clear-img {
+            width: 100%; height: 160px;
+            background: url('https://images.unsplash.com/photo-1582230230303-34e805561a06?q=80&w=800') center/cover;
+            border-radius: 12px; margin-bottom: 20px;
+            filter: grayscale(100%) contrast(120%);
+        }
+        
+        .lang-toggle-modal {
+            background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); color: white;
+            padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+            width: 100%; margin-bottom: 15px; box-sizing: border-box; text-align: center;
+            transition: 0.3s;
+        }
+        .lang-toggle-modal:hover { background: rgba(255,255,255,0.1); border-color: var(--accent); }
+
         .bento-container {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 20px;
-            max-width: 1200px; width: 100%;
+            display: grid; grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: auto auto;
+            gap: 20px; max-width: 1200px; width: 100%;
         }
 
-        /* 玻璃卡片共用設定 */
         .glass-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 30px;
-            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex; flex-direction: column; justify-content: space-between;
+            background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border);
+            border-radius: 24px; padding: 30px; display: flex; flex-direction: column; justify-content: space-between;
+            animation: springPopIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0; transform-style: preserve-3d; will-change: transform;
         }
-        .glass-card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: translateY(-2px); }
+        .glass-card:nth-child(1) { animation-delay: 0.1s; }
+        .glass-card:nth-child(2) { animation-delay: 0.2s; }
+        .glass-card:nth-child(3) { animation-delay: 0.3s; }
+        .glass-card:nth-child(4) { animation-delay: 0.4s; }
 
-        /* 區塊分配 */
         .card-hero { grid-column: span 1; grid-row: span 2; position: relative; overflow: hidden; }
         .card-config { grid-column: span 1; grid-row: span 2; }
         .card-cart { grid-column: span 1; grid-row: span 1; }
-        .card-info { grid-column: span 1; grid-row: span 1; display: flex; justify-content: space-between; flex-direction: column;}
+        .card-buyer { grid-column: span 1; grid-row: span 1; }
 
-        /* 主視覺區塊 */
         .hero-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800') center/cover;
-            opacity: 0.4; mix-blend-mode: luminosity; z-index: -1;
+            opacity: 0.4; mix-blend-mode: luminosity; z-index: -1; transform: scale(1.1) translateZ(-50px); 
         }
-        h1 { font-size: 3.5rem; margin: 0 0 10px 0; font-weight: 700; line-height: 1.1; letter-spacing: -1px; }
-        .highlight { color: var(--accent); text-shadow: 0 0 15px var(--accent-glow); }
-        .hero-text { font-size: 0.9rem; color: var(--text-sub); line-height: 1.8; }
 
-        /* 表單 UI (專業軟體風) */
-        h2 { font-size: 1.2rem; margin: 0 0 20px 0; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;}
-        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        h1 { font-size: 3.5rem; margin: 0 0 10px 0; font-weight: 700; line-height: 1.1; letter-spacing: -1px; transform: translateZ(30px); }
+        .highlight { color: var(--accent); text-shadow: 0 0 15px var(--accent-glow); }
+
+        h2 { font-size: 1.1rem; margin: 0 0 20px 0; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; transform: translateZ(20px);}
+        
+        /* 新增：檔案上傳區塊樣式 */
+        .upload-area {
+            border: 2px dashed var(--card-border); border-radius: 12px; padding: 20px;
+            text-align: center; color: var(--text-sub); cursor: pointer;
+            margin-bottom: 20px; font-size: 0.85rem; transition: 0.3s; transform: translateZ(15px);
+        }
+        .upload-area:hover { border-color: var(--accent); color: var(--accent); background: rgba(0, 242, 254, 0.05); }
+
+        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; transform: translateZ(10px);}
         .form-row label { font-size: 0.85rem; color: var(--text-sub); width: 80px; }
         
         select, input {
-            flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border);
-            color: white; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem;
-            outline: none; transition: 0.3s;
+            flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--card-border);
+            color: white; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
-        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
         select { -webkit-appearance: none; appearance: none; cursor: pointer; }
 
-        /* 按鈕設計 */
         .btn {
             background: var(--text-main); color: var(--bg-dark); border: none;
-            padding: 15px; border-radius: 12px; font-weight: 700; font-size: 0.9rem;
-            cursor: pointer; transition: 0.3s; width: 100%; margin-top: 20px; text-transform: uppercase;
+            padding: 15px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; width: 100%; text-transform: uppercase;
+            position: relative; overflow: hidden; transform: translateZ(20px);
+        }
+        .btn::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            transform: skewX(-25deg); transition: 0.5s ease-in-out;
         }
         .btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-glow); }
-        .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); }
+        .btn:hover::after { left: 150%; }
+        .btn:active { transform: translateZ(10px) scale(0.96); }
+
+        .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); margin-top: 10px; }
+        .btn-outline::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
         .btn-outline:hover { background: rgba(255,255,255,0.1); border-color: white; color: white; box-shadow: none; }
 
-        /* 購物車區塊 */
-        .cart-list { max-height: 120px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
-        .cart-item { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px dashed var(--card-border); }
-        .remove-btn { color: #ff4757; background: none; border: none; cursor: pointer; }
-        .total-display { font-size: 2rem; font-weight: 700; text-align: right; color: var(--accent); }
+        .barcode { font-family: 'Libre Barcode 39', cursive; font-size: 45px; line-height: 1; color: var(--accent); margin: 10px 0; font-weight: normal; }
 
-        /* 聯絡資訊區塊 */
-        .info-p { font-size: 0.8rem; color: var(--text-sub); margin: 5px 0; }
-        .info-p strong { color: var(--text-main); }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        #receipt-card { animation: fadeInUp 0.6s ease-out; }
 
-        /* 隱藏/顯示功能 */
         .hidden { display: none !important; }
 
-        /* 響應式：手機版自動變為垂直堆疊 */
         @media (max-width: 900px) {
-            .bento-container { grid-template-columns: 1fr; grid-template-rows: auto; }
-            .card-hero, .card-config, .card-cart, .card-info { grid-column: span 1; }
-            h1 { font-size: 2.5rem; }
-            body { padding: 10px; }
+            .bento-container { grid-template-columns: 1fr; }
+            .card-hero, .card-config, .card-cart, .card-buyer { grid-column: span 1; }
+            body { perspective: none; } 
         }
     </style>
 </head>
 <body>
+
+    <div id="member-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-clear-img"></div>
+            
+            <button class="lang-toggle-modal" onclick="toggleLang()" data-i18n="btnLang">EN / 中</button>
+            <h2 style="border: none; color: var(--accent); margin-top: 10px;">PRO MEMBER</h2>
+            
+            <p data-i18n="modalDesc" style="font-size: 0.9rem; color: var(--text-sub); margin-bottom: 25px;">Join our creator club for exclusive offers and premium color services.</p>
+            <input type="email" id="member-email" placeholder="Email Address" style="width: 100%; margin-bottom: 15px; box-sizing: border-box;" data-i18n-ph="phEmail">
+            <button class="btn" onclick="closeModal()" data-i18n="modalJoin">JOIN NOW</button>
+            <button class="btn btn-outline" onclick="closeModal()" data-i18n="modalGuest">Continue as Guest</button>
+        </div>
+    </div>
 
     <div class="bento-container">
         
         <div class="glass-card card-hero">
             <div class="hero-bg"></div>
             <div>
-                <p style="letter-spacing: 4px; font-size: 0.8rem; color: var(--accent);">PRO STUDIO.</p>
+                <p style="letter-spacing: 4px; font-size: 0.8rem; color: var(--accent); transform: translateZ(20px);">PRO STUDIO.</p>
                 <h1>Print<br>The<br><span class="highlight">Unseen.</span></h1>
             </div>
-            <p class="hero-text">我們專注於極致的色彩還原與紙張紋理。這不僅是一套訂購系統，更是您創作心血轉化為真實觸感的精密控制台。</p>
+            <p style="font-size: 0.9rem; color: var(--text-sub); line-height: 1.8; transform: translateZ(20px);">We focus on ultimate color reproduction and paper texture. This is a precision console for your art.</p>
         </div>
 
         <div class="glass-card card-config">
-            <h2>Parameters</h2>
+            <h2 data-i18n="configTitle">Parameters</h2>
             
+            <div class="upload-area" onclick="alert(currentLang === 'en' ? 'Simulate: File Picker Opened' : '模擬：開啟檔案選擇器')">
+                <span data-i18n="uploadText">Drop file here or click to upload</span>
+            </div>
+
             <div class="form-row">
-                <label>SIZE</label>
+                <label data-i18n="labelSize">SIZE</label>
                 <select id="size" onchange="calcPreview()">
-                    <option value="50" data-name="A4 Standard">A4 Standard</option>
-                    <option value="100" data-name="A3 Wide">A3 Wide</option>
+                    <option value="800" data-name="A0">A0 Massive</option>
+                    <option value="400" data-name="A1">A1 Poster</option>
+                    <option value="200" data-name="A2">A2 Display</option>
+                    <option value="100" data-name="A3">A3 Wide</option>
+                    <option value="50" data-name="A4">A4 Standard</option>
                 </select>
             </div>
             <div class="form-row">
-                <label>PAPER</label>
+                <label data-i18n="labelPaper">PAPER</label>
                 <select id="material" onchange="calcPreview()">
-                    <option value="1" data-name="Premium Matte">Premium Matte</option>
-                    <option value="1.8" data-name="Fine Art Acid-Free">Fine Art Acid-Free</option>
+                    <option value="1" data-name="Matte">Premium Matte</option>
+                    <option value="1.8" data-name="FineArt">Fine Art Acid-Free</option>
                 </select>
             </div>
             <div class="form-row">
-                <label>COLOR</label>
-                <select id="color" onchange="calcPreview()">
-                    <option value="1" data-name="Grayscale">Grayscale</option>
-                    <option value="3" data-name="Giclée Color">Giclée Color</option>
-                </select>
-            </div>
-            <div class="form-row">
-                <label>COPIES</label>
+                <label data-i18n="labelCopies">COPIES</label>
                 <input type="number" id="qty" value="1" min="1" oninput="calcPreview()">
             </div>
 
-            <div style="margin-top: auto;">
+            <div style="margin-top: auto; transform: translateZ(20px);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
-                    <span style="font-size: 0.8rem; color: var(--text-sub);">EST. COST</span>
+                    <span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="estCost">EST. COST</span>
                     <span style="font-size: 1.5rem; font-weight: 700;">NT$ <span id="preview-price">0</span></span>
                 </div>
-                <button class="btn btn-outline" onclick="addToCart()">Add to Queue</button>
+                <button class="btn btn-outline" onclick="addToCart()" data-i18n="btnAdd">Add to Queue</button>
             </div>
         </div>
 
         <div class="glass-card card-cart">
-            <h2>Print Queue</h2>
-            <div class="cart-list" id="cart-list">
-                <p style="color: var(--text-sub); font-size: 0.8rem; text-align: center;">Queue is empty.</p>
-            </div>
+            <h2 data-i18n="cartTitle">Print Queue</h2>
+            <div id="cart-list" style="max-height: 100px; overflow-y: auto; margin-bottom: 10px; transform: translateZ(10px);"></div>
             
-            <div style="margin-top: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                    <span style="font-size: 0.8rem; color: var(--text-sub);">TOTAL</span>
-                    <div class="total-display">NT$ <span id="final-total">0</span></div>
-                </div>
-                <button class="btn" onclick="checkout()">Submit Order</button>
-            </div>
-
-            <div id="receipt-card" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--card-border);">
-                <p class="info-p" style="color: var(--accent);">✅ Order Confirmed</p>
-                <p class="info-p">ID: <strong id="r-id"></strong></p>
-                <p class="info-p" style="font-size: 0.7rem; margin-top: 10px;">Please check your email for details.</p>
+            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; transform: translateZ(20px);">
+                <span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="total">TOTAL</span>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">NT$ <span id="final-total">0</span></div>
             </div>
         </div>
 
-        <div class="glass-card card-info">
-            <div>
-                <h2>Studio Info</h2>
-                <p class="info-p"><strong>A.</strong> 106 台北市大安區設計路 100 號</p>
-                <p class="info-p"><strong>T.</strong> 02-2345-6789</p>
-                <p class="info-p"><strong>E.</strong> hello@prostudio.tw</p>
-                <p class="info-p" style="margin-top: 15px;"><strong>Hours:</strong> Mon-Fri 10:00 - 19:00</p>
+        <div class="glass-card card-buyer">
+            <h2 data-i18n="buyerTitle">Client Info</h2>
+            <div class="form-row">
+                <input type="text" id="buyer-name" placeholder="Full Name" data-i18n-ph="phName">
             </div>
-            <div style="font-size: 0.7rem; color: var(--card-border); text-align: right; margin-top: 20px;">
-                © 2024 PRO STUDIO
+            <div class="form-row">
+                <input type="text" id="buyer-phone" placeholder="Phone / Email" data-i18n-ph="phContact">
+            </div>
+            
+            <button class="btn" onclick="checkout()" data-i18n="btnCheckout" style="margin-top: 10px;">Submit Order</button>
+
+            <div id="receipt-card" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--card-border); text-align: center; transform: translateZ(10px);">
+                <p style="color: var(--accent); font-size: 0.8rem; margin:0;" data-i18n="orderConfirmed">Order Confirmed</p>
+                <div class="barcode" id="r-barcode">*PRT-000*</div>
+                <p style="font-family: monospace; font-size: 0.9rem; margin:0;" id="r-id"></p>
             </div>
         </div>
 
     </div>
 
 <script>
-    let cart = [];
+    // ==========================================
+    // 1. 多國語系引擎 (包含上傳文字)
+    // ==========================================
+    let currentLang = 'en'; 
+    const dict = {
+        en: {
+            btnLang: "EN / 中", modalDesc: "Join our creator club for exclusive offers and premium color services.",
+            phEmail: "Email Address", modalJoin: "JOIN NOW", modalGuest: "Continue as Guest",
+            configTitle: "Parameters", uploadText: "Drop file here or click to upload", labelSize: "SIZE", labelPaper: "PAPER", labelCopies: "COPIES",
+            estCost: "EST. COST", btnAdd: "Add to Queue", cartTitle: "Print Queue", total: "TOTAL",
+            buyerTitle: "Client Info", phName: "Full Name", phContact: "Phone / Email",
+            btnCheckout: "Submit Order", orderConfirmed: "Order Confirmed", emptyCart: "Queue is empty."
+        },
+        zh: {
+            btnLang: "EN / 中", modalDesc: "加入創作者俱樂部，立即享有首單優惠與專屬色彩校正服務。",
+            phEmail: "電子信箱", modalJoin: "立即加入", modalGuest: "以訪客身分繼續",
+            configTitle: "規格設定", uploadText: "拖曳檔案至此，或點擊上傳", labelSize: "尺寸", labelPaper: "紙材", labelCopies: "數量",
+            estCost: "單項預估", btnAdd: "加入佇列", cartTitle: "輸出佇列", total: "總計金額",
+            buyerTitle: "聯絡資訊", phName: "真實姓名", phContact: "聯絡電話 / Email",
+            btnCheckout: "確認並結帳", orderConfirmed: "訂單已成立", emptyCart: "佇列目前為空。"
+        }
+    };
 
-    // 計算單項金額
+    function toggleLang() {
+        currentLang = currentLang === 'en' ? 'zh' : 'en';
+        document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = dict[currentLang][el.getAttribute('data-i18n')]; });
+        document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = dict[currentLang][el.getAttribute('data-i18n-ph')]; });
+        renderCart(); 
+    }
+
+    function closeModal() {
+        document.getElementById('member-modal').style.opacity = '0';
+        setTimeout(() => document.getElementById('member-modal').style.display = 'none', 500);
+    }
+
+    // ==========================================
+    // 2. 炫技：動態數字滾動引擎
+    // ==========================================
+    function animateValue(obj, start, end, duration) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start);
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    let currentPreviewPrice = 0;
+    let currentTotal = 0;
+
+    // ==========================================
+    // 3. 核心邏輯與結帳 (加入智慧合併邏輯)
+    // ==========================================
+    let cart = [];
+    let orderSeq = 1;
+
     function calcPreview() {
         const size = parseFloat(document.getElementById('size').value);
         const material = parseFloat(document.getElementById('material').value);
-        const color = parseFloat(document.getElementById('color').value);
-        let qty = parseInt(document.getElementById('qty').value) || 1;
-        if (qty < 1) qty = 1;
-
-        let total = size * material * color * qty;
-        if (qty >= 100) total *= 0.9; // 大量折扣
-
-        document.getElementById('preview-price').innerText = Math.round(total);
-        return Math.round(total);
+        const qty = parseInt(document.getElementById('qty').value) || 1;
+        const newPrice = Math.round(size * material * qty);
+        
+        animateValue(document.getElementById('preview-price'), currentPreviewPrice, newPrice, 400);
+        currentPreviewPrice = newPrice;
     }
 
-    // 加入佇列
     function addToCart() {
-        const sizeName = document.getElementById('size').options[document.getElementById('size').selectedIndex].dataset.name;
-        const qty = document.getElementById('qty').value;
-        const price = calcPreview();
+        const selectBox = document.getElementById('size');
+        const matBox = document.getElementById('material');
+        
+        // 抓取尺寸與材質的代號 (例如: A4, Matte) 組合出唯一商品名稱
+        const sizeName = selectBox.options[selectBox.selectedIndex].dataset.name; 
+        const matName = matBox.options[matBox.selectedIndex].dataset.name;
+        const itemName = `${sizeName} (${matName})`; // 例如：A4 (Matte)
 
-        cart.push({ name: `${sizeName}`, qty: qty, price: price });
+        const qty = parseInt(document.getElementById('qty').value) || 1;
+        const unitPrice = Math.round(parseFloat(selectBox.value) * parseFloat(matBox.value)); // 單件價格
+        const totalPrice = unitPrice * qty; // 此次加入的總價
+
+        // 智慧合併邏輯：尋找購物車內是否已有相同名稱的商品
+        const existingIndex = cart.findIndex(item => item.name === itemName);
+
+        if (existingIndex > -1) {
+            // 如果已經存在，直接累加數量和價格
+            cart[existingIndex].qty += qty;
+            cart[existingIndex].price += totalPrice;
+        } else {
+            // 如果不存在，新增一筆資料
+            cart.push({ name: itemName, qty: qty, price: totalPrice });
+        }
+        
         renderCart();
     }
 
-    // 渲染購物車
     function renderCart() {
         const list = document.getElementById('cart-list');
         list.innerHTML = '';
         let sum = 0;
 
         if (cart.length === 0) {
-            list.innerHTML = '<p style="color: var(--text-sub); font-size: 0.8rem; text-align: center;">Queue is empty.</p>';
+            list.innerHTML = `<p style="color: var(--text-sub); font-size: 0.8rem; text-align: center;">${dict[currentLang].emptyCart}</p>`;
         } else {
             cart.forEach((item, index) => {
                 sum += item.price;
+                // 在這裡我們使用 * 符號來顯示數量 (例如：A4 (Matte) * 3)
                 list.innerHTML += `
-                    <div class="cart-item">
-                        <span>${item.name} (x${item.qty})</span>
-                        <span>$${item.price} <button class="remove-btn" onclick="removeItem(${index})">×</button></span>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px dashed var(--card-border);">
+                        <span>${item.name} * ${item.qty}</span>
+                        <span>$${item.price} <button onclick="removeItem(${index})" style="color:#ff4757; background:none; border:none; cursor:pointer;">×</button></span>
                     </div>`;
             });
         }
-        document.getElementById('final-total').innerText = sum;
+        
+        animateValue(document.getElementById('final-total'), currentTotal, sum, 500);
+        currentTotal = sum;
     }
 
-    // 移除項目
-    function removeItem(index) {
-        cart.splice(index, 1);
-        renderCart();
-    }
+    function removeItem(index) { cart.splice(index, 1); renderCart(); }
 
-    // 結帳送出
     function checkout() {
-        if (cart.length === 0) { alert('Your print queue is empty.'); return; }
-        const orderId = "PRJ-" + Date.now().toString().slice(-5);
-        document.getElementById('r-id').innerText = orderId;
+        const name = document.getElementById('buyer-name').value;
+        const phone = document.getElementById('buyer-phone').value;
+
+        if (cart.length === 0) { alert(currentLang === 'en' ? 'Queue is empty!' : '佇列是空的！'); return; }
+        if (!name || !phone) { alert(currentLang === 'en' ? 'Please fill in Client Info.' : '請填寫完整的聯絡資訊。'); return; }
+
+        const randomStr = Math.random().toString(36).toUpperCase().substring(2, 8); 
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const date = String(today.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${date}`;
+        const seqStr = String(orderSeq++).padStart(4, '0');
+
+        const orderId = `${randomStr}-${dateStr}-${seqStr}`;
+
+        document.getElementById('r-id').innerText = "ID: " + orderId;
+        document.getElementById('r-barcode').innerText = `*${orderId}*`; 
+        
         document.getElementById('receipt-card').classList.remove('hidden');
     }
 
-    // 初始化
+    // ==========================================
+    // 4. 炫技：3D 游標追蹤引擎
+    // ==========================================
+    document.addEventListener("DOMContentLoaded", () => {
+        const cards = document.querySelectorAll('.glass-card');
+        
+        setTimeout(() => {
+            cards.forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    if (window.innerWidth <= 900) return; 
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    
+                    const rotateX = ((y - centerY) / centerY) * -8;
+                    const rotateY = ((x - centerX) / centerX) * 8;
+
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+                    card.style.transition = 'none'; 
+                    card.style.borderColor = 'rgba(255,255,255,0.2)';
+                    card.style.boxShadow = '0 15px 40px var(--accent-glow)';
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    if (window.innerWidth <= 900) return;
+                    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+                    card.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.5s, box-shadow 0.5s';
+                    card.style.borderColor = 'var(--card-border)';
+                    card.style.boxShadow = 'none';
+                });
+            });
+        }, 1500); 
+    });
+
     calcPreview();
+    renderCart();
+
 </script>
 
 </body>
