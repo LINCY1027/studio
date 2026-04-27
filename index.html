@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Studio | Ultimate Print</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.4);
+            --bg-dark: #050505;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-sub: #888888;
+        }
+
+        /* 動態流體背景 */
+        body {
+            font-family: 'Montserrat', 'Noto Sans TC', sans-serif;
+            margin: 0; padding: 20px; min-height: 100vh;
+            color: var(--text-main);
+            background: linear-gradient(-45deg, #050505, #11111a, #0a0f1c, #050505);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            display: flex; justify-content: center; align-items: center;
+        }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+        /* Bento Grid 緊湊佈局核心 */
+        .bento-container {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 20px;
+            max-width: 1200px; width: 100%;
+        }
+
+        /* 玻璃卡片共用設定 */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 30px;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .glass-card:hover { border-color: rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: translateY(-2px); }
+
+        /* 區塊分配 */
+        .card-hero { grid-column: span 1; grid-row: span 2; position: relative; overflow: hidden; }
+        .card-config { grid-column: span 1; grid-row: span 2; }
+        .card-cart { grid-column: span 1; grid-row: span 1; }
+        .card-info { grid-column: span 1; grid-row: span 1; display: flex; justify-content: space-between; flex-direction: column;}
+
+        /* 主視覺區塊 */
+        .hero-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800') center/cover;
+            opacity: 0.4; mix-blend-mode: luminosity; z-index: -1;
+        }
+        h1 { font-size: 3.5rem; margin: 0 0 10px 0; font-weight: 700; line-height: 1.1; letter-spacing: -1px; }
+        .highlight { color: var(--accent); text-shadow: 0 0 15px var(--accent-glow); }
+        .hero-text { font-size: 0.9rem; color: var(--text-sub); line-height: 1.8; }
+
+        /* 表單 UI (專業軟體風) */
+        h2 { font-size: 1.2rem; margin: 0 0 20px 0; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;}
+        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .form-row label { font-size: 0.85rem; color: var(--text-sub); width: 80px; }
+        
+        select, input {
+            flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border);
+            color: white; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem;
+            outline: none; transition: 0.3s;
+        }
+        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+        select { -webkit-appearance: none; appearance: none; cursor: pointer; }
+
+        /* 按鈕設計 */
+        .btn {
+            background: var(--text-main); color: var(--bg-dark); border: none;
+            padding: 15px; border-radius: 12px; font-weight: 700; font-size: 0.9rem;
+            cursor: pointer; transition: 0.3s; width: 100%; margin-top: 20px; text-transform: uppercase;
+        }
+        .btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); }
+        .btn-outline:hover { background: rgba(255,255,255,0.1); border-color: white; color: white; box-shadow: none; }
+
+        /* 購物車區塊 */
+        .cart-list { max-height: 120px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px; }
+        .cart-item { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px dashed var(--card-border); }
+        .remove-btn { color: #ff4757; background: none; border: none; cursor: pointer; }
+        .total-display { font-size: 2rem; font-weight: 700; text-align: right; color: var(--accent); }
+
+        /* 聯絡資訊區塊 */
+        .info-p { font-size: 0.8rem; color: var(--text-sub); margin: 5px 0; }
+        .info-p strong { color: var(--text-main); }
+
+        /* 隱藏/顯示功能 */
+        .hidden { display: none !important; }
+
+        /* 響應式：手機版自動變為垂直堆疊 */
+        @media (max-width: 900px) {
+            .bento-container { grid-template-columns: 1fr; grid-template-rows: auto; }
+            .card-hero, .card-config, .card-cart, .card-info { grid-column: span 1; }
+            h1 { font-size: 2.5rem; }
+            body { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bento-container">
+        
+        <div class="glass-card card-hero">
+            <div class="hero-bg"></div>
+            <div>
+                <p style="letter-spacing: 4px; font-size: 0.8rem; color: var(--accent);">PRO STUDIO.</p>
+                <h1>Print<br>The<br><span class="highlight">Unseen.</span></h1>
+            </div>
+            <p class="hero-text">我們專注於極致的色彩還原與紙張紋理。這不僅是一套訂購系統，更是您創作心血轉化為真實觸感的精密控制台。</p>
+        </div>
+
+        <div class="glass-card card-config">
+            <h2>Parameters</h2>
+            
+            <div class="form-row">
+                <label>SIZE</label>
+                <select id="size" onchange="calcPreview()">
+                    <option value="50" data-name="A4 Standard">A4 Standard</option>
+                    <option value="100" data-name="A3 Wide">A3 Wide</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>PAPER</label>
+                <select id="material" onchange="calcPreview()">
+                    <option value="1" data-name="Premium Matte">Premium Matte</option>
+                    <option value="1.8" data-name="Fine Art Acid-Free">Fine Art Acid-Free</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>COLOR</label>
+                <select id="color" onchange="calcPreview()">
+                    <option value="1" data-name="Grayscale">Grayscale</option>
+                    <option value="3" data-name="Giclée Color">Giclée Color</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>COPIES</label>
+                <input type="number" id="qty" value="1" min="1" oninput="calcPreview()">
+            </div>
+
+            <div style="margin-top: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
+                    <span style="font-size: 0.8rem; color: var(--text-sub);">EST. COST</span>
+                    <span style="font-size: 1.5rem; font-weight: 700;">NT$ <span id="preview-price">0</span></span>
+                </div>
+                <button class="btn btn-outline" onclick="addToCart()">Add to Queue</button>
+            </div>
+        </div>
+
+        <div class="glass-card card-cart">
+            <h2>Print Queue</h2>
+            <div class="cart-list" id="cart-list">
+                <p style="color: var(--text-sub); font-size: 0.8rem; text-align: center;">Queue is empty.</p>
+            </div>
+            
+            <div style="margin-top: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <span style="font-size: 0.8rem; color: var(--text-sub);">TOTAL</span>
+                    <div class="total-display">NT$ <span id="final-total">0</span></div>
+                </div>
+                <button class="btn" onclick="checkout()">Submit Order</button>
+            </div>
+
+            <div id="receipt-card" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--card-border);">
+                <p class="info-p" style="color: var(--accent);">✅ Order Confirmed</p>
+                <p class="info-p">ID: <strong id="r-id"></strong></p>
+                <p class="info-p" style="font-size: 0.7rem; margin-top: 10px;">Please check your email for details.</p>
+            </div>
+        </div>
+
+        <div class="glass-card card-info">
+            <div>
+                <h2>Studio Info</h2>
+                <p class="info-p"><strong>A.</strong> 106 台北市大安區設計路 100 號</p>
+                <p class="info-p"><strong>T.</strong> 02-2345-6789</p>
+                <p class="info-p"><strong>E.</strong> hello@prostudio.tw</p>
+                <p class="info-p" style="margin-top: 15px;"><strong>Hours:</strong> Mon-Fri 10:00 - 19:00</p>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--card-border); text-align: right; margin-top: 20px;">
+                © 2024 PRO STUDIO
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    let cart = [];
+
+    // 計算單項金額
+    function calcPreview() {
+        const size = parseFloat(document.getElementById('size').value);
+        const material = parseFloat(document.getElementById('material').value);
+        const color = parseFloat(document.getElementById('color').value);
+        let qty = parseInt(document.getElementById('qty').value) || 1;
+        if (qty < 1) qty = 1;
+
+        let total = size * material * color * qty;
+        if (qty >= 100) total *= 0.9; // 大量折扣
+
+        document.getElementById('preview-price').innerText = Math.round(total);
+        return Math.round(total);
+    }
+
+    // 加入佇列
+    function addToCart() {
+        const sizeName = document.getElementById('size').options[document.getElementById('size').selectedIndex].dataset.name;
+        const qty = document.getElementById('qty').value;
+        const price = calcPreview();
+
+        cart.push({ name: `${sizeName}`, qty: qty, price: price });
+        renderCart();
+    }
+
+    // 渲染購物車
+    function renderCart() {
+        const list = document.getElementById('cart-list');
+        list.innerHTML = '';
+        let sum = 0;
+
+        if (cart.length === 0) {
+            list.innerHTML = '<p style="color: var(--text-sub); font-size: 0.8rem; text-align: center;">Queue is empty.</p>';
+        } else {
+            cart.forEach((item, index) => {
+                sum += item.price;
+                list.innerHTML += `
+                    <div class="cart-item">
+                        <span>${item.name} (x${item.qty})</span>
+                        <span>$${item.price} <button class="remove-btn" onclick="removeItem(${index})">×</button></span>
+                    </div>`;
+            });
+        }
+        document.getElementById('final-total').innerText = sum;
+    }
+
+    // 移除項目
+    function removeItem(index) {
+        cart.splice(index, 1);
+        renderCart();
+    }
+
+    // 結帳送出
+    function checkout() {
+        if (cart.length === 0) { alert('Your print queue is empty.'); return; }
+        const orderId = "PRJ-" + Date.now().toString().slice(-5);
+        document.getElementById('r-id').innerText = orderId;
+        document.getElementById('receipt-card').classList.remove('hidden');
+    }
+
+    // 初始化
+    calcPreview();
+</script>
+
+</body>
+</html>
