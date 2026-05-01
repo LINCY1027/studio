@@ -3,430 +3,1110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Studio | Ultimate Print</title>
+    <title>Pro Studio | Ultimate Print & SAAS</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&family=Noto+Sans+TC:wght@300;400;500&family=Libre+Barcode+39&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* =========================================
+           1. 系統核心色彩與變數
+           ========================================= */
         :root {
-            --accent: #00f2fe;
-            --accent-glow: rgba(0, 242, 254, 0.4);
-            --bg-dark: #050505;
-            --card-bg: rgba(255, 255, 255, 0.03);
-            --card-border: rgba(255, 255, 255, 0.08);
-            --text-main: #ffffff;
-            --text-sub: #888888;
+            /* 強制瀏覽器使用深色模式的 UI 元素 (下拉選單、滾動條等) */
+            color-scheme: dark; 
+            
+            --accent: #00e5ff; --accent-glow: rgba(0, 229, 255, 0.5);
+            --bg-dark: #050505; --card-bg: rgba(20, 20, 25, 0.6);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff; --text-sub: #aaaaaa;
+            --gold: #ffd700; --silver: #c0c0c0;
         }
 
-        body {
+        html, body {
+            margin: 0; padding: 0; box-sizing: border-box;
             font-family: 'Montserrat', 'Noto Sans TC', sans-serif;
-            margin: 0; padding: 20px; min-height: 100vh;
-            color: var(--text-main);
-            background: linear-gradient(-45deg, #050505, #11111a, #0a0f1c, #050505);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            display: flex; justify-content: center; align-items: center;
-            overflow-x: hidden;
-            perspective: 2000px;
+            color: var(--text-main); background-color: var(--bg-dark);
+            background: linear-gradient(-45deg, #0a0a0a, #1a1a2e, #16213e, #0f0c29);
+            background-size: 400% 400%; animation: gradientBG 15s ease infinite;
         }
+
+        body.shop-mode { overflow: hidden; height: 100vh; width: 100vw; }
+        body.admin-mode { overflow-y: auto; overflow-x: hidden; min-height: 100vh; }
+
+        *, *::before, *::after { box-sizing: inherit; }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+        ::-webkit-scrollbar-thumb:hover { background-color: var(--accent); }
+
         @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+        @keyframes springPopIn { 0% { opacity: 0; transform: translateY(40px) scale(0.9); } 60% { opacity: 1; transform: translateY(-5px) scale(1.02); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        @keyframes springPopIn { 
-            0% { opacity: 0; transform: translateY(40px) scale(0.9); } 
-            60% { opacity: 1; transform: translateY(-5px) scale(1.02); } 
-            100% { opacity: 1; transform: translateY(0) scale(1); } 
+        /* =========================================
+           2. 全域控制元件
+           ========================================= */
+        .global-lang-select { 
+            position: fixed; bottom: 80px; left: 40px; z-index: 10000; width: auto; min-width: 140px; 
+            background: rgba(0,0,0,0.5); border: 1px solid var(--card-border); color: var(--text-sub); 
+            padding: 8px 14px; border-radius: 20px; cursor: pointer; backdrop-filter: blur(5px); 
+            font-weight: 500; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            appearance: none; -webkit-appearance: none; outline: none; text-align: center;
+            font-family: 'Montserrat', 'Noto Sans TC', sans-serif; font-size: 0.75rem;
+        }
+        .global-lang-select:hover { background: rgba(0,0,0,0.9); color: var(--accent); border-color: var(--accent); box-shadow: 0 5px 15px var(--accent-glow); }
+        .global-lang-select option { background: var(--bg-dark); color: white; text-align: left;}
+
+        .chatbot-btn { position: fixed; bottom: 80px; right: 40px; background: var(--accent); color: #000; width: 60px; height: 60px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 0.8rem; cursor: pointer; box-shadow: 0 10px 30px var(--accent-glow); z-index: 1000; transition: 0.3s; }
+        .chatbot-btn:hover { transform: scale(1.1); }
+        .chatbot-window { position: fixed; bottom: 150px; right: 40px; width: 300px; background: rgba(15,15,20,0.95); border: 1px solid var(--accent); border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; overflow: hidden; animation: fadeIn 0.3s ease; backdrop-filter: blur(20px);}
+
+        /* 後綴文字浮水印 */
+        .sys-footer {
+            position: fixed; bottom: 15px; right: 25px; z-index: 1; pointer-events: none;
+            font-size: 0.65rem; color: rgba(255, 255, 255, 0.15); letter-spacing: 2px; font-weight: 600;
         }
 
-        /* VIP 會員彈窗 (清晰圖片版) */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px);
-            display: flex; justify-content: center; align-items: center; z-index: 9999;
-            transition: opacity 0.5s ease;
+        /* =========================================
+           3. 彈窗與浮動層
+           ========================================= */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease; }
+        .modal-content { background: rgba(15, 15, 20, 0.8); border: 1px solid var(--card-border); padding: 40px; border-radius: 24px; text-align: center; width: 90%; max-width: 550px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); position: relative; overflow: hidden; max-height: 90vh; overflow-y: auto;}
+        .modal-clear-img { width: 100%; height: 160px; background-color: #1a1a1a; background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80'); background-size: cover; background-position: center; border-radius: 12px; margin-bottom: 20px; }
+        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .auth-tab { flex: 1; background: transparent; border: 1px solid var(--card-border); color: var(--text-sub); padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: 500; }
+        .auth-tab.active { background: rgba(255,255,255,0.1); color: white; border-color: var(--accent); }
+        .close-modal-btn { background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); color: var(--text-sub); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; position: absolute; top: 15px; right: 15px; transition: 0.3s; display: flex; justify-content: center; align-items: center; line-height: 1; z-index: 10;}
+        .close-modal-btn:hover { background: rgba(255, 71, 87, 0.8); border-color: #ff4757; color: white; }
+        .info-scroll { max-height: 60vh; overflow-y: auto; text-align: left; padding-right: 10px; }
+        .info-item { margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent); }
+        .info-item h3 { margin: 0 0 10px 0; color: var(--accent); font-size: 1.05rem; text-transform: uppercase; letter-spacing: 1px;}
+        .info-item p { margin: 0; font-size: 0.85rem; color: var(--text-sub); line-height: 1.8; }
+
+        /* =========================================
+           4. 共通介面元件
+           ========================================= */
+        .glass-card { background: var(--card-bg); backdrop-filter: blur(30px); border: 1px solid var(--card-border); border-radius: 24px; padding: 30px; display: flex; flex-direction: column; justify-content: space-between; animation: springPopIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; transform-style: preserve-3d; will-change: transform; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1, h2 { font-weight: 700; margin: 0 0 10px 0; }
+        h1 { font-size: 3.5rem; line-height: 1.1; letter-spacing: -1px; transform: translateZ(30px); text-shadow: 0 4px 20px rgba(0,0,0,1), 0 2px 5px rgba(0,0,0,0.8); }
+        h2 { font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; transform: translateZ(20px);}
+        .highlight { color: var(--accent); text-shadow: 0 0 15px var(--accent-glow), 0 4px 20px rgba(0,0,0,1); }
+        .hero-desc { font-size: 0.9rem; color: white; line-height: 1.8; transform: translateZ(20px); text-shadow: 0 2px 10px rgba(0,0,0,1), 0 1px 3px rgba(0,0,0,0.8); font-weight: 500; }
+        
+        /* 下拉選單客製化小箭頭 */
+        select {
+            appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23aaaaaa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 10px auto;
         }
-        .modal-content {
-            background: rgba(15, 15, 20, 0.95); border: 1px solid var(--accent);
-            padding: 40px; border-radius: 24px; text-align: center; max-width: 400px;
-            box-shadow: 0 0 50px var(--accent-glow);
-            position: relative; overflow: hidden; 
-        }
-        /* 清晰的廣告圖，不再被霧化 */
-        .modal-clear-img {
-            width: 100%; height: 160px;
-            background: url('https://images.unsplash.com/photo-1582230230303-34e805561a06?q=80&w=800') center/cover;
-            border-radius: 12px; margin-bottom: 20px;
-            filter: grayscale(100%) contrast(120%);
+
+        select, input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--card-border); color: white; padding: 10px 15px; border-radius: 12px; font-size: 0.85rem; outline: none; transition: border-color 0.3s, box-shadow 0.3s; margin-bottom: 10px; }
+        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+        
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        
+        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; transform: translateZ(10px);}
+        .form-row label { font-size: 0.8rem; color: var(--text-sub); width: 130px; min-width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .form-row select, .form-row input { margin-bottom: 0; flex-grow: 1; }
+
+        .btn { flex-shrink: 0; background: var(--text-main); color: var(--bg-dark); border: none; padding: 15px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; width: 100%; text-transform: uppercase; position: relative; overflow: hidden; transform: translateZ(20px); white-space: nowrap; }
+        .btn::after { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent); transform: skewX(-25deg); transition: 0.5s ease-in-out; }
+        .btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-glow); }
+        .btn:hover::after { left: 150%; }
+        .btn:active { transform: translateZ(10px) scale(0.96); }
+        .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); margin-top: 10px; }
+        
+        .header-btns { position: absolute; top: 25px; left: 30px; display: flex; gap: 10px; z-index: 10; flex-wrap: wrap;}
+        .header-btns button { background: rgba(0,0,0,0.5); border: 1px solid var(--card-border); color: white; padding: 8px 15px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; backdrop-filter: blur(5px); transition: 0.3s; white-space: nowrap;}
+        .header-btns button:hover { border-color: var(--accent); color: var(--accent); }
+        .hidden { display: none !important; }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; transition: 0.3s; white-space: nowrap;}
+        .badge-pending { background: rgba(255, 171, 0, 0.2); color: #ffab00; border: 1px solid #ffab00;}
+        .badge-done { background: rgba(46, 213, 115, 0.2); color: #2ed573; border: 1px solid #2ed573;}
+        .vip-gold { color: #000; background: var(--gold); border: 1px solid var(--gold); }
+        .vip-silver { color: #000; background: var(--silver); border: 1px solid var(--silver); }
+        /* 新增：一般會員等級 Badge */
+        .vip-member { color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); }
+        .vip-none { color: var(--text-sub); background: transparent; border: 1px solid var(--card-border); }
+        
+        .clickable-badge { cursor: pointer; user-select: none; }
+        .clickable-badge:hover { filter: brightness(1.2); transform: scale(1.05); box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .btn-small { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: 0.3s; text-transform: uppercase; margin-right: 5px;}
+        .btn-small:hover { background: var(--text-main); color: #000; border-color: var(--text-main); }
+
+        /* =========================================
+           5. 商店前台專屬排版
+           ========================================= */
+        #shop-view { 
+            height: 100vh; width: 100vw; 
+            display: flex; justify-content: center; align-items: center;
+            padding: 40px; box-sizing: border-box;
         }
         
-        .lang-toggle-modal {
-            background: rgba(0, 0, 0, 0.5); border: 1px solid var(--card-border); color: white;
-            padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
-            width: 100%; margin-bottom: 15px; box-sizing: border-box; text-align: center;
-            transition: 0.3s;
+        #shop-view .bento-container { 
+            display: grid; grid-template-columns: 1.2fr 1fr 1fr; 
+            grid-template-rows: 0.8fr 1.5fr; 
+            gap: 20px; max-width: 1400px; 
+            width: 100%; height: calc(100vh - 120px); max-height: 900px; position: relative;
         }
-        .lang-toggle-modal:hover { background: rgba(255,255,255,0.1); border-color: var(--accent); }
-
-        .bento-container {
-            display: grid; grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: auto auto;
-            gap: 20px; max-width: 1200px; width: 100%;
-        }
-
-        .glass-card {
-            background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border);
-            border-radius: 24px; padding: 30px; display: flex; flex-direction: column; justify-content: space-between;
-            animation: springPopIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            opacity: 0; transform-style: preserve-3d; will-change: transform;
-        }
-        .glass-card:nth-child(1) { animation-delay: 0.1s; }
-        .glass-card:nth-child(2) { animation-delay: 0.2s; }
-        .glass-card:nth-child(3) { animation-delay: 0.3s; }
-        .glass-card:nth-child(4) { animation-delay: 0.4s; }
+        
+        #shop-view .glass-card { height: 100%; overflow-y: auto; overflow-x: hidden; padding: 25px; } 
+        #shop-view .glass-card::-webkit-scrollbar { display: none; }
 
         .card-hero { grid-column: span 1; grid-row: span 2; position: relative; overflow: hidden; }
         .card-config { grid-column: span 1; grid-row: span 2; }
         .card-cart { grid-column: span 1; grid-row: span 1; }
         .card-buyer { grid-column: span 1; grid-row: span 1; }
-
-        .hero-bg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800') center/cover;
-            opacity: 0.4; mix-blend-mode: luminosity; z-index: -1; transform: scale(1.1) translateZ(-50px); 
-        }
-
-        h1 { font-size: 3.5rem; margin: 0 0 10px 0; font-weight: 700; line-height: 1.1; letter-spacing: -1px; transform: translateZ(30px); }
-        .highlight { color: var(--accent); text-shadow: 0 0 15px var(--accent-glow); }
-
-        h2 { font-size: 1.1rem; margin: 0 0 20px 0; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; transform: translateZ(20px);}
         
-        /* 新增：檔案上傳區塊樣式 */
-        .upload-area {
-            border: 2px dashed var(--card-border); border-radius: 12px; padding: 20px;
-            text-align: center; color: var(--text-sub); cursor: pointer;
-            margin-bottom: 20px; font-size: 0.85rem; transition: 0.3s; transform: translateZ(15px);
-        }
-        .upload-area:hover { border-color: var(--accent); color: var(--accent); background: rgba(0, 242, 254, 0.05); }
-
-        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; transform: translateZ(10px);}
-        .form-row label { font-size: 0.85rem; color: var(--text-sub); width: 80px; }
+        .hero-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #111; background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; opacity: 0.4; mix-blend-mode: luminosity; z-index: -1; transform: scale(1.1) translateZ(-50px); transition: opacity 0.5s ease, mix-blend-mode 0.5s ease, transform 0.5s ease; }
+        .glass-card.card-hero:hover .hero-bg { opacity: 0.85; mix-blend-mode: normal; }
         
-        select, input {
-            flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--card-border);
-            color: white; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; outline: none;
-            transition: border-color 0.3s, box-shadow 0.3s;
+        .upload-area { border: 2px dashed var(--card-border); border-radius: 12px; padding: 15px; text-align: center; color: var(--text-sub); cursor: pointer; margin-bottom: 15px; font-size: 0.85rem; transition: 0.3s; transform: translateZ(15px); flex-shrink: 0;}
+        .upload-area:hover { border-color: var(--accent); color: var(--accent); background: rgba(0, 229, 255, 0.05); }
+        .receipt-box { margin-top: auto; padding-top: 15px; border-top: 1px dashed var(--card-border); text-align: center; transform: translateZ(10px); min-height: 70px; display: flex; flex-direction: column; justify-content: center; transition: 0.5s ease; flex-shrink: 0;}
+        .barcode { font-family: 'Libre Barcode 39', cursive; font-size: 45px; line-height: 1; color: var(--card-border); margin: 5px 0; font-weight: normal; transition: 0.5s; }
+        .receipt-status { color: var(--text-sub); font-size: 0.8rem; margin:0; transition: 0.5s; font-weight: 500; letter-spacing: 1px;}
+        .receipt-id { font-family: monospace; font-size: 0.9rem; margin:0; color: var(--card-border); transition: 0.5s; }
+        .receipt-box.active { border-top-color: var(--accent); }
+        .receipt-box.active .barcode { color: var(--accent); text-shadow: 0 0 10px var(--accent-glow); }
+        .receipt-box.active .receipt-status { color: var(--accent); }
+        .receipt-box.active .receipt-id { color: var(--text-main); }
+
+        .chat-header { background: rgba(0,229,255,0.1); padding: 15px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; }
+        .chat-header h3 { margin: 0; font-size: 1rem; color: var(--accent); }
+        .chat-body { height: 250px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.85rem; line-height: 1.4; }
+        .msg-bot { background: rgba(255,255,255,0.1); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-user { background: var(--accent); color: #000; align-self: flex-end; border-bottom-right-radius: 2px; font-weight: 500;}
+        .chat-input-area { display: flex; padding: 10px; border-top: 1px solid var(--card-border); }
+        .chat-input-area input { margin: 0; border-radius: 8px 0 0 8px; border-right: none; }
+        .chat-input-area button { background: var(--accent); border: none; color: #000; font-weight: bold; padding: 0 15px; border-radius: 0 8px 8px 0; cursor: pointer; }
+
+        /* =========================================
+           6. 戰情室專屬排版 (Admin Layout)
+           ========================================= */
+        #admin-view { width: 100%; padding: 40px 4vw 120px 4vw; box-sizing: border-box; animation: fadeIn 0.5s ease; }
+        #admin-view .header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; box-sizing: border-box; background: transparent; padding: 0; border: none; border-radius: 0; }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 1px solid var(--card-border); padding-bottom: 15px;}
+        .header-top h1 { margin: 5px 0 0 0; font-size: 2.5rem; line-height: 1.1; letter-spacing: 0px; text-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        .header-top p { margin: 0; letter-spacing: 4px; font-size: 0.85rem; color: var(--accent); font-weight: bold; }
+        
+        .admin-clock-display { color: var(--accent); font-family: monospace; font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; text-shadow: 0 0 10px var(--accent-glow);}
+        
+        .admin-nav { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 5px;}
+        .admin-nav button { width: auto; padding: 10px 15px; font-size: 0.85rem; margin: 0; transform: none; white-space: nowrap;}
+        
+        /* 修正：確保 Active 按鈕文字不受行內樣式干擾 */
+        .admin-nav button.active { background: var(--accent) !important; color: #000 !important; border-color: var(--accent) !important; text-shadow: none; }
+        
+        .admin-panel { display: none; }
+        .admin-panel.active { display: block; animation: fadeIn 0.5s ease; }
+        
+        .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .metric-card { grid-column: span 1; padding: 20px; text-align: center; transform: none !important; height: auto;}
+        .metric-title { font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; margin-bottom: 10px; white-space: nowrap;}
+        .metric-value { font-size: 2rem; font-weight: 700; color: var(--text-main); white-space: nowrap;}
+        .chart-card-large { grid-column: span 2; height: 350px; padding: 20px; transform: none !important;}
+        .chart-card-medium { grid-column: span 1; height: 350px; padding: 20px; transform: none !important;}
+        .chart-container { position: relative; height: calc(100% - 40px); width: 100%; }
+
+        .table-container { width: 100%; overflow-x: auto; max-height: 60vh; margin-top: 10px;}
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        th { padding: 15px; border-bottom: 1px solid var(--accent); color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; position: sticky; top: 0; background: rgba(10,10,15,0.9); z-index: 10; white-space: nowrap;}
+        td { padding: 15px; border-bottom: 1px solid var(--card-border); color: var(--text-main); white-space: nowrap;}
+        tr:hover td { background: rgba(255,255,255,0.05); }
+
+        .pos-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .pos-grid .glass-card { transform: none !important; opacity: 1 !important; animation: fadeIn 0.5s ease forwards; height: 500px; overflow-y: auto;}
+        
+        .kanban-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px; }
+        .kanban-col { background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 16px; padding: 15px; min-height: 400px;}
+        .kanban-col-title { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 15px; }
+        .kanban-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 15px; margin-bottom: 10px; font-size: 0.8rem; transition: 0.3s; cursor: pointer; opacity: 1 !important; animation: none;}
+        .kanban-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+        .team-layout { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+        .stream-box { height: 400px; overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;}
+        .stream-msg { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; border-left: 3px solid var(--accent); font-size: 0.85rem;}
+        .stream-msg.system { border-left-color: var(--gold); color: var(--gold); }
+        .stream-time { font-size: 0.7rem; color: var(--text-sub); margin-bottom: 5px; }
+
+        .settings-card { height: auto !important; min-height: 100%; justify-content: flex-start !important; gap: 15px;}
+
+        /* =========================================
+           7. 手機端響應式排版
+           ========================================= */
+        @media (max-width: 1024px) {
+            .dashboard-grid, .pos-grid, .kanban-board, .team-layout { grid-template-columns: 1fr; }
+            .metric-card, .chart-card-large, .chart-card-medium { grid-column: span 1; }
         }
-        select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-        select { -webkit-appearance: none; appearance: none; cursor: pointer; }
 
-        .btn {
-            background: var(--text-main); color: var(--bg-dark); border: none;
-            padding: 15px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; width: 100%; text-transform: uppercase;
-            position: relative; overflow: hidden; transform: translateZ(20px);
-        }
-        .btn::after {
-            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-            transform: skewX(-25deg); transition: 0.5s ease-in-out;
-        }
-        .btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-glow); }
-        .btn:hover::after { left: 150%; }
-        .btn:active { transform: translateZ(10px) scale(0.96); }
-
-        .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); margin-top: 10px; }
-        .btn-outline::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
-        .btn-outline:hover { background: rgba(255,255,255,0.1); border-color: white; color: white; box-shadow: none; }
-
-        .barcode { font-family: 'Libre Barcode 39', cursive; font-size: 45px; line-height: 1; color: var(--accent); margin: 10px 0; font-weight: normal; }
-
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        #receipt-card { animation: fadeInUp 0.6s ease-out; }
-
-        .hidden { display: none !important; }
-
-        @media (max-width: 900px) {
-            .bento-container { grid-template-columns: 1fr; }
-            .card-hero, .card-config, .card-cart, .card-buyer { grid-column: span 1; }
-            body { perspective: none; } 
+        @media (max-width: 768px) {
+            body.shop-mode { overflow-y: auto; height: 100%; min-height: 100vh; }
+            #shop-view { height: auto; padding: 15px; padding-bottom: 100px; display: block; }
+            #shop-view .bento-container { display: flex; flex-direction: column; height: auto; max-height: none; gap: 15px; }
+            .glass-card { padding: 20px; height: auto !important; min-height: auto; }
+            
+            .form-row { flex-direction: column; align-items: flex-start; margin-bottom: 12px; }
+            .form-row label { width: 100%; margin-bottom: 6px; }
+            
+            .header-top { flex-direction: column; align-items: flex-start; gap: 10px; }
+            h1 { font-size: 2.2rem; }
+            
+            .global-lang-select { left: 15px; bottom: 15px; min-width: auto; padding: 8px 12px; font-size: 0.7rem; }
+            .chatbot-btn { right: 15px; bottom: 15px; width: 50px; height: 50px; }
+            .admin-nav { flex-wrap: wrap; }
+            .admin-nav button { flex: 1 1 30%; font-size: 0.75rem; padding: 8px; }
         }
     </style>
 </head>
-<body>
+<body class="shop-mode">
 
-    <div id="member-modal" class="modal-overlay">
+    <select id="global-lang-select" class="global-lang-select" onchange="I18nManager.changeLang(this.value)">
+        <option value="en">🌐 English</option>
+        <option value="zh">🌐 繁體中文</option>
+        <option value="ja">🌐 日本語</option>
+    </select>
+
+    <!-- === 所有的彈窗 (Modals) === -->
+    <div id="auth-modal" class="modal-overlay hidden" style="display: none;">
         <div class="modal-content">
+            <button class="close-modal-btn" onclick="UIManager.closeModal('auth-modal')">×</button>
             <div class="modal-clear-img"></div>
-            
-            <button class="lang-toggle-modal" onclick="toggleLang()" data-i18n="btnLang">EN / 中</button>
-            <h2 style="border: none; color: var(--accent); margin-top: 10px;">PRO MEMBER</h2>
-            
-            <p data-i18n="modalDesc" style="font-size: 0.9rem; color: var(--text-sub); margin-bottom: 25px;">Join our creator club for exclusive offers and premium color services.</p>
-            <input type="email" id="member-email" placeholder="Email Address" style="width: 100%; margin-bottom: 15px; box-sizing: border-box;" data-i18n-ph="phEmail">
-            <button class="btn" onclick="closeModal()" data-i18n="modalJoin">JOIN NOW</button>
-            <button class="btn btn-outline" onclick="closeModal()" data-i18n="modalGuest">Continue as Guest</button>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login" onclick="UIManager.switchAuthTab('login')" data-i18n="tabLogin">LOGIN</button>
+                <button class="auth-tab" id="tab-register" onclick="UIManager.switchAuthTab('register')" data-i18n="tabRegister">REGISTER</button>
+            </div>
+            <div id="form-login">
+                <input type="text" id="login-acc" placeholder="Account ID" data-i18n-ph="phAccount">
+                <input type="password" id="login-pwd" placeholder="Password" data-i18n-ph="phPassword">
+                <button class="btn" onclick="AuthEngine.handleLogin()" data-i18n="btnLogin">SIGN IN</button>
+                <button class="btn btn-outline" onclick="UIManager.closeModal('auth-modal')" data-i18n="btnGuest">Guest Access</button>
+                <p style="font-size: 0.75rem; color: var(--text-sub); margin-top: 15px;">Admin: admin / 1234</p>
+            </div>
+            <div id="form-register" class="hidden">
+                <input type="text" id="reg-name" placeholder="Full Name" data-i18n-ph="phName">
+                <input type="tel" id="reg-phone" placeholder="Phone Number" data-i18n-ph="phPhone">
+                <input type="email" id="reg-email" placeholder="Email Address" data-i18n-ph="phEmail">
+                <input type="password" id="reg-pwd" placeholder="Password" data-i18n-ph="phPassword">
+                <button class="btn" onclick="AuthEngine.handleRegister()" data-i18n="btnRegister">CREATE ACCOUNT</button>
+            </div>
         </div>
     </div>
 
-    <div class="bento-container">
-        
-        <div class="glass-card card-hero">
-            <div class="hero-bg"></div>
-            <div>
-                <p style="letter-spacing: 4px; font-size: 0.8rem; color: var(--accent); transform: translateZ(20px);">PRO STUDIO.</p>
-                <h1>Print<br>The<br><span class="highlight">Unseen.</span></h1>
-            </div>
-            <p style="font-size: 0.9rem; color: var(--text-sub); line-height: 1.8; transform: translateZ(20px);">We focus on ultimate color reproduction and paper texture. This is a precision console for your art.</p>
+    <div id="track-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-content" style="padding-top: 60px;">
+            <button class="close-modal-btn" onclick="UIManager.closeModal('track-modal')">×</button>
+            <h2 data-i18n="trackTitle" style="color: var(--accent); border: none; margin-bottom: 20px;">TRACK ORDER</h2>
+            <input type="text" id="track-id" placeholder="Order ID" data-i18n-ph="phOrderId">
+            <input type="tel" id="track-phone" placeholder="Phone Number" data-i18n-ph="phPhone">
+            <button class="btn" onclick="ShopEngine.searchOrder()" data-i18n="btnSearch">SEARCH</button>
+            <div id="track-result" class="hidden" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 12px; text-align: left;"></div>
         </div>
+    </div>
 
-        <div class="glass-card card-config">
-            <h2 data-i18n="configTitle">Parameters</h2>
-            
-            <div class="upload-area" onclick="alert(currentLang === 'en' ? 'Simulate: File Picker Opened' : '模擬：開啟檔案選擇器')">
-                <span data-i18n="uploadText">Drop file here or click to upload</span>
+    <div id="edit-member-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-content" style="padding-top: 40px; max-width: 600px;">
+            <button class="close-modal-btn" onclick="UIManager.closeModal('edit-member-modal')">×</button>
+            <h2 data-i18n="editMemberTitle" style="color: var(--accent); border: none; margin-bottom: 15px;">EDIT FULL PROFILE</h2>
+            <input type="hidden" id="edit-m-id">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <div class="form-row"><label data-i18n="colName" style="width: 60px; min-width: 60px;">Name</label><input type="text" id="edit-m-name"></div>
+                <div class="form-row"><label data-i18n="colPhone" style="width: 60px; min-width: 60px;">Phone</label><input type="tel" id="edit-m-phone"></div>
+                <div class="form-row"><label data-i18n="colEmail" style="width: 60px; min-width: 60px;">Email</label><input type="email" id="edit-m-email"></div>
+                <div class="form-row"><label data-i18n="colCompany" style="width: 60px; min-width: 60px;">Company</label><input type="text" id="edit-m-company"></div>
+                <div class="form-row"><label data-i18n="colAge" style="width: 60px; min-width: 60px;">Age</label><input type="number" id="edit-m-age"></div>
+                <div class="form-row"><label style="width: 60px; min-width: 60px;">Gender</label><select id="edit-m-gender"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                <div class="form-row"><label data-i18n="colSource" style="width: 60px; min-width: 60px;">Source</label><input type="text" id="edit-m-source"></div>
+                <div class="form-row"><label data-i18n="colOrders" style="width: 60px; min-width: 60px;">Orders</label><input type="number" id="edit-m-orders"></div>
             </div>
+            <div class="form-row" style="margin-top: 10px;"><label data-i18n="colSpent" style="width: 60px; min-width: 60px;">Spent</label><input type="number" id="edit-m-spent"></div>
+            <button class="btn" onclick="AdminEngine.saveMemberEdit()" data-i18n="btnSave" style="margin-top: 10px;">SAVE CHANGES</button>
+        </div>
+    </div>
 
-            <div class="form-row">
-                <label data-i18n="labelSize">SIZE</label>
-                <select id="size" onchange="calcPreview()">
-                    <option value="800" data-name="A0">A0 Massive</option>
-                    <option value="400" data-name="A1">A1 Poster</option>
-                    <option value="200" data-name="A2">A2 Display</option>
-                    <option value="100" data-name="A3">A3 Wide</option>
-                    <option value="50" data-name="A4">A4 Standard</option>
-                </select>
+    <div id="info-modal" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-content" style="padding-top: 50px; max-width: 600px;">
+            <button class="close-modal-btn" onclick="UIManager.closeModal('info-modal')">×</button>
+            <h2 data-i18n="infoTitle" style="color: var(--accent); border: none; margin-bottom: 20px;">ABOUT PRO CRM</h2>
+            <div class="info-scroll">
+                <div class="info-item"><h3 data-i18n="crmSalesTitle">Sales CRM</h3><p data-i18n="crmSalesDesc">Sales CRM enables businesses to manage opportunities. Reps can build relationships, uncover prospects, customize presentations, provide accurate quotes, track pipeline stages, collaborate, and generate reports.</p></div>
+                <div class="info-item"><h3 data-i18n="crmMarketingTitle">Marketing CRM</h3><p data-i18n="crmMarketingDesc">Marketing CRM makes the unpredictable predictable. It helps understand customer preferences and needs to attract them with unique experiences. While businesses shine, marketing automation works behind the scenes.</p></div>
+                <div class="info-item"><h3 data-i18n="crmServiceTitle">Service CRM</h3><p data-i18n="crmServiceDesc">Service CRM delivers more as customer expectations rise. Build loyalty through perfect service experiences. Automate manual processes, reduce errors, save time, and use chatbots for common inquiries.</p></div>
+                <div class="info-item"><h3 data-i18n="crmEcomTitle">E-commerce CRM</h3><p data-i18n="crmEcomDesc">E-commerce CRM is a toolset providing an omnichannel commerce experience across mobile, online, and physical stores. Identify customers across all channels and give high-value clients VIP treatment.</p></div>
             </div>
-            <div class="form-row">
-                <label data-i18n="labelPaper">PAPER</label>
-                <select id="material" onchange="calcPreview()">
-                    <option value="1" data-name="Matte">Premium Matte</option>
-                    <option value="1.8" data-name="FineArt">Fine Art Acid-Free</option>
-                </select>
-            </div>
-            <div class="form-row">
-                <label data-i18n="labelCopies">COPIES</label>
-                <input type="number" id="qty" value="1" min="1" oninput="calcPreview()">
-            </div>
+        </div>
+    </div>
 
-            <div style="margin-top: auto; transform: translateZ(20px);">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
-                    <span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="estCost">EST. COST</span>
-                    <span style="font-size: 1.5rem; font-weight: 700;">NT$ <span id="preview-price">0</span></span>
+    <!-- === 前台購物系統 (Shop View) === -->
+    <div id="shop-view">
+        <div class="bento-container">
+            <div class="glass-card card-hero">
+                <div class="header-btns">
+                    <button onclick="UIManager.openModal('auth-modal')" data-i18n="btnReLogin">MEMBER LOGIN</button>
+                    <button onclick="UIManager.openModal('track-modal')" data-i18n="btnTrack">TRACK ORDER</button>
+                    <button onclick="UIManager.openModal('info-modal')" data-i18n="btnInfo">SYSTEM INFO</button>
                 </div>
-                <button class="btn btn-outline" onclick="addToCart()" data-i18n="btnAdd">Add to Queue</button>
+                <div class="hero-bg"></div>
+                <div style="margin-top: 40px;">
+                    <p style="letter-spacing: 4px; font-size: 0.8rem; color: var(--accent); transform: translateZ(20px); text-shadow: 0 2px 10px rgba(0,0,0,1);">PRO STUDIO.</p>
+                    <h1>Print<br>The<br><span class="highlight">Unseen.</span></h1>
+                </div>
+                <p class="hero-desc">We focus on ultimate color reproduction and paper texture. This is a precision console for your art.</p>
+            </div>
+
+            <div class="glass-card card-config">
+                <h2 data-i18n="configTitle">Parameters</h2>
+                <div class="upload-area" onclick="alert(I18nManager.getText('uploadText'))"><span data-i18n="uploadText">Drop file here or click to upload</span></div>
+                
+                <div class="form-row"><label data-i18n="labelSize">SIZE</label><select id="size" onchange="ShopEngine.calcPreview()"></select></div>
+                <div class="form-row"><label data-i18n="labelPaper">PAPER</label><select id="material" onchange="ShopEngine.calcPreview()"></select></div>
+                <div class="form-row"><label data-i18n="labelCopies">COPIES</label><input type="number" id="qty" value="1" min="1" oninput="ShopEngine.calcPreview()"></div>
+                
+                <div style="margin-top: auto; transform: translateZ(20px);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;"><span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="estCost">EST. COST</span><span style="font-size: 1.5rem; font-weight: 700;"><span class="sys-currency">NT$</span> <span id="preview-price">0</span></span></div>
+                    <button class="btn btn-outline" onclick="ShopEngine.addToCart()" data-i18n="btnAdd">Add to Queue</button>
+                </div>
+            </div>
+
+            <div class="glass-card card-cart">
+                <h2 data-i18n="cartTitle">Print Queue</h2>
+                <div id="cart-list" style="overflow-y: auto; margin-bottom: 10px; transform: translateZ(10px); flex-grow: 1;"></div>
+                <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; transform: translateZ(20px);">
+                    <span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="total">TOTAL</span><div style="font-size: 2rem; font-weight: 700; color: var(--accent);"><span class="sys-currency">NT$</span> <span id="final-total">0</span></div>
+                </div>
+            </div>
+
+            <div class="glass-card card-buyer">
+                <h2 data-i18n="buyerTitle">Client Info</h2>
+                <div class="form-row" style="margin-bottom: 5px;"><input type="text" id="buyer-name" placeholder="Full Name *" data-i18n-ph="phName"></div>
+                <div class="form-row" style="margin-bottom: 5px;"><input type="tel" id="buyer-phone" placeholder="Phone Number *" data-i18n-ph="phPhone"></div>
+                <div class="form-row" style="margin-bottom: 5px;"><input type="email" id="buyer-email" placeholder="Email Address" data-i18n-ph="phEmail"></div>
+                <div class="form-row" style="margin-bottom: 5px;"><input type="text" id="buyer-company" placeholder="Company / VAT" data-i18n-ph="phCompany"></div>
+                
+                <div class="form-row" style="margin-bottom: 5px;">
+                    <select id="buyer-source">
+                        <option value="" disabled selected data-i18n="phSource">How did you hear about us?</option>
+                        <option value="Google Ads" data-i18n="srcAds">Search / Ads</option>
+                        <option value="Social Media" data-i18n="srcSocial">Social Media</option>
+                        <option value="Referral" data-i18n="srcReferral">Friend / Referral</option>
+                        <option value="Organic" data-i18n="srcOrganic">Other</option>
+                    </select>
+                </div>
+                <div class="form-row" style="margin-bottom: 5px;"><input type="text" id="buyer-notes" placeholder="Order Notes" data-i18n-ph="phNotes"></div>
+                
+                <button class="btn" onclick="ShopEngine.checkout()" data-i18n="btnCheckout" style="margin-top: 10px; padding: 10px; flex-shrink: 0;">Submit Order</button>
+                
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--card-border); text-align: center; flex-shrink: 0;">
+                    <label data-i18n="labelCurrency" style="font-size: 0.8rem; color: var(--text-sub); margin-right: 10px;">Currency</label>
+                    <select id="shop-currency" onchange="UIManager.changeCurrency(this.value)" style="width: auto; padding: 5px 15px; margin: 0; background: rgba(0,0,0,0.8); border: 1px solid var(--accent); color: var(--accent); border-radius: 20px; font-weight: bold; cursor: pointer;">
+                        <option value="NT$">NT$ (TWD)</option>
+                        <option value="$">$ (USD)</option>
+                        <option value="¥">¥ (JPY)</option>
+                        <option value="€">€ (EUR)</option>
+                    </select>
+                </div>
+
+                <div id="receipt-card" class="receipt-box" style="margin-top: 15px;">
+                    <p class="receipt-status" id="r-status" data-i18n="sysStandby">SYSTEM STANDBY</p>
+                    <div class="barcode" id="r-barcode">*000000*</div>
+                    <p class="receipt-id" id="r-id" data-i18n="awaiting">AWAITING SUBMISSION</p>
+                </div>
             </div>
         </div>
 
-        <div class="glass-card card-cart">
-            <h2 data-i18n="cartTitle">Print Queue</h2>
-            <div id="cart-list" style="max-height: 100px; overflow-y: auto; margin-bottom: 10px; transform: translateZ(10px);"></div>
-            
-            <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; transform: translateZ(20px);">
-                <span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="total">TOTAL</span>
-                <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">NT$ <span id="final-total">0</span></div>
-            </div>
+        <div class="chatbot-btn" onclick="UIManager.toggleChat()">CHAT</div>
+        <div class="chatbot-window" id="chat-window">
+            <div class="chat-header"><h3 data-i18n="chatTitle">Support AI</h3><button onclick="UIManager.toggleChat()" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2rem;">×</button></div>
+            <div class="chat-body" id="chat-body"><div class="chat-msg msg-bot" data-i18n="chatGreet">Hello! How can I assist you with your print order today?</div></div>
+            <div class="chat-input-area"><input type="text" id="chat-input" placeholder="Type a message..." style="margin:0; padding:10px; font-size:0.8rem;"><button onclick="UIManager.sendChat()">SEND</button></div>
         </div>
-
-        <div class="glass-card card-buyer">
-            <h2 data-i18n="buyerTitle">Client Info</h2>
-            <div class="form-row">
-                <input type="text" id="buyer-name" placeholder="Full Name" data-i18n-ph="phName">
-            </div>
-            <div class="form-row">
-                <input type="text" id="buyer-phone" placeholder="Phone / Email" data-i18n-ph="phContact">
-            </div>
-            
-            <button class="btn" onclick="checkout()" data-i18n="btnCheckout" style="margin-top: 10px;">Submit Order</button>
-
-            <div id="receipt-card" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--card-border); text-align: center; transform: translateZ(10px);">
-                <p style="color: var(--accent); font-size: 0.8rem; margin:0;" data-i18n="orderConfirmed">Order Confirmed</p>
-                <div class="barcode" id="r-barcode">*PRT-000*</div>
-                <p style="font-family: monospace; font-size: 0.9rem; margin:0;" id="r-id"></p>
-            </div>
-        </div>
-
     </div>
+
+    <!-- === 後台戰情室 (Admin View) === -->
+    <div id="admin-view" class="hidden" style="display: none;">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <p style="letter-spacing: 4px; font-size: 0.8rem; color: var(--accent); margin:0;">PRO STUDIO</p>
+                    <h1 data-i18n="adminTitle">SAAS</h1>
+                </div>
+                <div id="admin-clock" class="admin-clock-display">0000-00-00 00:00:00.000</div>
+            </div>
+            <div class="admin-nav">
+                <button class="btn btn-outline active" onclick="UIManager.switchAdminTab('dashboard')" data-i18n="navDashboard">Dashboard</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('members')" data-i18n="navMembers">CRM</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('pos')" data-i18n="navPos">POS</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('orders')" data-i18n="navOrders">Orders</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('tasks')" data-i18n="navTasks">Tasks</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('team')" data-i18n="navTeam">Team</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('currency')" data-i18n="navCurrency" style="border-color: #ff007f; color: #ff007f;">Currency</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('products')" data-i18n="navProducts" style="border-color: var(--accent); color: var(--accent);">Products</button>
+                <button class="btn btn-outline" onclick="UIManager.switchAdminTab('settings')" data-i18n="navSettings" style="border-color: var(--gold); color: var(--gold);">Settings</button>
+                <button class="btn" onclick="AuthEngine.logoutAdmin()" data-i18n="btnLogout">LOGOUT</button>
+            </div>
+        </div>
+
+        <div id="panel-dashboard" class="admin-panel active">
+            <div class="dashboard-grid">
+                <div class="glass-card metric-card"><div class="metric-title" data-i18n="metRevenue">Gross Revenue</div><div class="metric-value"><span class="sys-currency">NT$</span> <span id="dash-rev">0</span></div></div>
+                <div class="glass-card metric-card"><div class="metric-title" data-i18n="metCost">Total Cost</div><div class="metric-value" style="color: #ff4757;"><span class="sys-currency">NT$</span> <span id="dash-cost">0</span></div></div>
+                <div class="glass-card metric-card"><div class="metric-title" data-i18n="metProfit">Net Profit</div><div class="metric-value" style="color: #2ed573;"><span class="sys-currency">NT$</span> <span id="dash-profit">0</span></div></div>
+                <div class="glass-card metric-card">
+                    <div class="metric-title" data-i18n="metOfficer">Duty Officer</div><div class="metric-value" style="color: white; font-size: 1.5rem; margin-top: 5px;">Admin_01</div>
+                    <button id="btn-clock" class="btn-outline" style="width:100%; padding:8px; border-radius:8px; margin-top:10px; border-color:#2ed573; color:#2ed573; background:rgba(46,213,115,0.1);" onclick="AdminEngine.toggleClockIn()" data-i18n="btnClockIn">CLOCK IN</button>
+                </div>
+                
+                <div class="glass-card chart-card-large"><h2 data-i18n="chartSales">Product Sales Volume</h2><div class="chart-container"><canvas id="salesChart"></canvas></div></div>
+                <div class="glass-card chart-card-medium"><h2 data-i18n="chartSource">Source</h2><div class="chart-container"><canvas id="sourceChart"></canvas></div></div>
+                <div class="glass-card chart-card-medium"><h2 data-i18n="chartAge">Age Demographics</h2><div class="chart-container"><canvas id="ageChart"></canvas></div></div>
+            </div>
+        </div>
+        
+        <div id="panel-members" class="admin-panel">
+            <div class="glass-card">
+                <h2 data-i18n="panelMembersTitle">CRM Directory</h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>ID</th><th data-i18n="colName">Name</th><th data-i18n="colCompany">Company</th><th data-i18n="colPhone">Phone</th><th data-i18n="colAge">Age/Gen</th><th data-i18n="colSource">Source</th><th data-i18n="colOrders">Orders</th><th data-i18n="colSpent">Total Spent</th><th data-i18n="colTier">VIP Tier</th><th data-i18n="colAction">Action</th></tr></thead>
+                        <tbody id="member-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-pos" class="admin-panel">
+            <div class="pos-grid">
+                <div class="glass-card" style="opacity: 1 !important;">
+                    <h2 data-i18n="posTitle">Point of Sale</h2>
+                    <div class="form-row"><label data-i18n="labelSize">SIZE</label><select id="pos-size" onchange="ShopEngine.calcPosPreview()"></select></div>
+                    <div class="form-row"><label data-i18n="labelPaper">PAPER</label><select id="pos-material" onchange="ShopEngine.calcPosPreview()"></select></div>
+                    <div class="form-row"><label data-i18n="labelCopies">COPIES</label><input type="number" id="pos-qty" value="1" min="1" oninput="ShopEngine.calcPosPreview()"></div>
+                    <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;"><span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="estCost">EST. COST</span><span style="font-size: 1.5rem; font-weight: 700;"><span class="sys-currency">NT$</span> <span id="pos-preview-price">0</span></span></div>
+                    <button class="btn btn-outline" onclick="ShopEngine.addToPosCart()" data-i18n="btnAdd" style="margin-top:auto;">Add to Queue</button>
+                </div>
+                <div class="glass-card" style="opacity: 1 !important;">
+                    <h2 data-i18n="cartTitle">Print Queue</h2>
+                    <div id="pos-cart-list" style="overflow-y: auto; margin-bottom: 10px; flex-grow: 1;"></div>
+                    <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 0.8rem; color: var(--text-sub);" data-i18n="total">TOTAL</span><div style="font-size: 2rem; font-weight: 700; color: var(--accent);"><span class="sys-currency">NT$</span> <span id="pos-total">0</span></div></div>
+                </div>
+                <div class="glass-card" style="opacity: 1 !important;">
+                    <h2 data-i18n="buyerTitle">Client Info</h2>
+                    <div class="form-row" style="margin-bottom: 5px;"><input type="text" id="pos-buyer-name" placeholder="Full Name *" data-i18n-ph="phName"></div>
+                    <div class="form-row" style="margin-bottom: 5px;"><input type="tel" id="pos-buyer-phone" placeholder="Phone Number *" data-i18n-ph="phPhone"></div>
+                    <div class="form-row" style="margin-bottom: 5px;"><input type="text" id="pos-buyer-company" placeholder="Company / VAT" data-i18n-ph="phCompany"></div>
+                    <div class="form-row" style="margin-bottom: 5px;">
+                        <select id="pos-buyer-source">
+                            <option value="" disabled selected data-i18n="phSource">How did you hear about us?</option>
+                            <option value="Google Ads" data-i18n="srcAds">Search / Ads</option>
+                            <option value="Social Media" data-i18n="srcSocial">Social Media</option>
+                            <option value="Referral" data-i18n="srcReferral">Friend / Referral</option>
+                            <option value="Organic" data-i18n="srcOrganic">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-row" style="margin-bottom: 15px;">
+                        <select id="pos-buyer-payment">
+                            <option value="Cash" data-i18n="payCash">Cash</option>
+                            <option value="Credit Card" data-i18n="payCard">Credit Card</option>
+                            <option value="Transfer" data-i18n="payTransfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="ShopEngine.checkoutPos()" data-i18n="btnCheckout" style="margin-top: auto;">Submit Order</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-orders" class="admin-panel">
+            <div class="glass-card">
+                <h2 data-i18n="panelOrdersTitle">Live Order Queue</h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Order ID</th><th data-i18n="colDate">Date</th><th data-i18n="colClient">Client</th><th data-i18n="colPayment">Payment</th><th data-i18n="colItems">Items</th><th data-i18n="metCost">Cost</th><th data-i18n="colAmount">Amount</th><th data-i18n="colStatus">Status (Click to Toggle)</th></tr></thead>
+                        <tbody id="order-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-tasks" class="admin-panel">
+            <div class="glass-card" style="background: transparent; border: none; box-shadow: none; padding: 0;">
+                <h2 data-i18n="tasksTitle">Production Workflow</h2>
+                <div class="kanban-board">
+                    <div class="kanban-col" id="task-prep"><div class="kanban-col-title" style="color:var(--text-sub);">1. PRE-PRESS</div></div>
+                    <div class="kanban-col" id="task-print"><div class="kanban-col-title" style="color:#ffab00;">2. PRINTING</div></div>
+                    <div class="kanban-col" id="task-qc"><div class="kanban-col-title" style="color:var(--accent);">3. QC & PACK</div></div>
+                    <div class="kanban-col" id="task-done"><div class="kanban-col-title" style="color:#2ed573;">4. READY / DONE</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-team" class="admin-panel">
+            <div class="team-layout">
+                <div class="glass-card">
+                    <h2 data-i18n="teamTitle">Activity Stream</h2>
+                    <div class="stream-box" id="team-feed"><div class="stream-msg system"><div class="stream-time">08:00 AM</div><strong>SYSTEM:</strong> Workspace Initialized.</div></div>
+                    <div style="display:flex; gap:10px;"><input type="text" id="team-input" placeholder="Share an update..." style="margin:0;"><button class="btn" style="width:120px;" onclick="AdminEngine.sendTeamMsg()">POST</button></div>
+                </div>
+                <div class="glass-card">
+                    <h2 data-i18n="staffOnline">Online Staff</h2><div id="staff-list" style="color:var(--text-sub); font-size:0.9rem;"><p>🟢 Admin_01 <span style="font-size:0.7rem; color:var(--text-sub);">(You)</span></p></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-currency" class="admin-panel">
+            <div class="dashboard-grid">
+                <div class="glass-card settings-card" style="grid-column: span 2;">
+                    <h2 data-i18n="panelCurrencyTitle">Currency & Exchange Rates</h2>
+                    <p style="color: var(--text-sub); font-size: 0.85rem; margin-bottom: 20px;">System Base Currency is TWD. Select a display currency to automatically fetch live exchange rates and recalculate all UI prices.</p>
+                    <div class="form-row">
+                        <label data-i18n="labelCurrency">Display Currency</label>
+                        <select id="admin-currency" onchange="UIManager.changeCurrency(this.value)" style="border-color: #ff007f; color: #ff007f; font-weight: bold;">
+                            <option value="NT$">NT$ (TWD)</option>
+                            <option value="$">$ (USD)</option>
+                            <option value="¥">¥ (JPY)</option>
+                            <option value="€">€ (EUR)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="glass-card settings-card" style="grid-column: span 2;">
+                    <h2 data-i18n="liveRates" style="color: #ff007f;">Live Exchange Rates (Base: TWD)</h2>
+                    <div class="table-container" style="max-height: 200px;">
+                        <table>
+                            <thead><tr><th>Currency</th><th>Live Rate (Multiplier)</th></tr></thead>
+                            <tbody id="rates-table-body">
+                                <tr><td colspan="2" style="text-align:center; color:var(--text-sub);">Fetching data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p id="rate-update-time" style="font-size: 0.75rem; color: var(--text-sub); text-align: right; margin-top: 10px;"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-products" class="admin-panel">
+            <div class="glass-card" style="width: 100%;">
+                <h2 data-i18n="setProductTitle">Product Management (Base TWD)</h2>
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--card-border);">
+                    <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; color: var(--accent);" data-i18n="setAddProduct">+ Add New Product</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <select id="new-p-type" style="width:120px; margin:0;"><option value="size">Size</option><option value="material">Material</option></select>
+                        <input type="text" id="new-p-name" placeholder="Product Name" style="margin:0; flex: 1; min-width: 150px;">
+                        <input type="number" id="new-p-price" placeholder="Price/Mult" step="0.1" style="margin:0; width: 100px;">
+                        <input type="number" id="new-p-cost" placeholder="Cost/Mult" step="0.1" style="margin:0; width: 100px;">
+                        <button class="btn btn-outline" style="margin:0; width: auto; padding: 12px 20px; border-color: var(--accent); color: var(--accent);" onclick="AdminEngine.addNewProduct()" data-i18n="btnAdd">ADD</button>
+                    </div>
+                </div>
+                <div class="table-container" style="max-height: 50vh;">
+                    <table>
+                        <thead><tr><th data-i18n="colItems">Item Name</th><th data-i18n="colType">Type</th><th data-i18n="colPrice">Price (TWD)</th><th>Cost (TWD)</th><th data-i18n="colStatus">Status</th><th data-i18n="colAction">Action</th></tr></thead>
+                        <tbody id="product-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-settings" class="admin-panel">
+            <div class="dashboard-grid">
+                <div class="glass-card settings-card" style="grid-column: span 2;">
+                    <h2 data-i18n="setLogicTitle">System Config</h2>
+                    <div class="form-row"><label data-i18n="labelGold">Gold VIP</label><input type="number" id="set-gold" value="30000"></div>
+                    <div class="form-row"><label data-i18n="labelSilver">Silver VIP</label><input type="number" id="set-silver" value="15000"></div>
+                    <button class="btn btn-outline" onclick="AdminEngine.saveSystemLogic()" data-i18n="btnSaveConfig" style="border-color: var(--accent); color: var(--accent); margin-bottom: 20px;">Save Config</button>
+                </div>
+                
+                <div class="glass-card settings-card" style="grid-column: span 2;">
+                    <h2 data-i18n="setDataTitle">Data Management</h2>
+                    <div class="form-row"><label data-i18n="colName">Name</label><input type="text" id="set-m-name" placeholder="Name"></div>
+                    <div class="form-row"><label data-i18n="colPhone">Phone</label><input type="tel" id="set-m-phone" placeholder="Phone"></div>
+                    <div class="form-row"><label data-i18n="colSpent">Spent</label><input type="number" id="set-m-spent" value="0"></div>
+                    <button class="btn btn-outline" onclick="AdminEngine.addManualMember()" data-i18n="btnAddMember" style="margin-bottom: 20px;">Add Member</button>
+                    <hr style="border:0; border-top:1px dashed var(--card-border); margin: 20px 0;">
+                    <button class="btn" onclick="AdminEngine.exportData()" data-i18n="btnExport" style="background:var(--gold); color:#000;">Export Orders CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加入浮水印後綴 -->
+    <div class="sys-footer">SAAS DESIGN BY LINCY</div>
 
 <script>
     // ==========================================
-    // 1. 多國語系引擎 (包含上傳文字)
+    // 1. CurrencyEngine: 動態聯網匯率引擎
     // ==========================================
-    let currentLang = 'en'; 
-    const dict = {
-        en: {
-            btnLang: "EN / 中", modalDesc: "Join our creator club for exclusive offers and premium color services.",
-            phEmail: "Email Address", modalJoin: "JOIN NOW", modalGuest: "Continue as Guest",
-            configTitle: "Parameters", uploadText: "Drop file here or click to upload", labelSize: "SIZE", labelPaper: "PAPER", labelCopies: "COPIES",
-            estCost: "EST. COST", btnAdd: "Add to Queue", cartTitle: "Print Queue", total: "TOTAL",
-            buyerTitle: "Client Info", phName: "Full Name", phContact: "Phone / Email",
-            btnCheckout: "Submit Order", orderConfirmed: "Order Confirmed", emptyCart: "Queue is empty."
+    const CurrencyEngine = {
+        rates: { TWD: 1, USD: 0.031, JPY: 4.6, EUR: 0.029 },
+        currencyCode: 'TWD',
+        lastUpdateText: 'Using Fallback Rates',
+        
+        async fetchRates() {
+            try {
+                const response = await fetch('https://open.er-api.com/v6/latest/TWD');
+                const data = await response.json();
+                if(data && data.rates) {
+                    this.rates = data.rates;
+                    this.lastUpdateText = new Date(data.time_last_update_utc).toLocaleString();
+                    console.log("Live exchange rates updated successfully.");
+                }
+            } catch (error) {
+                console.error("Failed to fetch exchange rates, using fallback rates:", error);
+            }
+            AdminEngine.renderRatesTable();
         },
-        zh: {
-            btnLang: "EN / 中", modalDesc: "加入創作者俱樂部，立即享有首單優惠與專屬色彩校正服務。",
-            phEmail: "電子信箱", modalJoin: "立即加入", modalGuest: "以訪客身分繼續",
-            configTitle: "規格設定", uploadText: "拖曳檔案至此，或點擊上傳", labelSize: "尺寸", labelPaper: "紙材", labelCopies: "數量",
-            estCost: "單項預估", btnAdd: "加入佇列", cartTitle: "輸出佇列", total: "總計金額",
-            buyerTitle: "聯絡資訊", phName: "真實姓名", phContact: "聯絡電話 / Email",
-            btnCheckout: "確認並結帳", orderConfirmed: "訂單已成立", emptyCart: "佇列目前為空。"
+        
+        convert(twdAmount) {
+            const rate = this.rates[this.currencyCode] || 1;
+            const converted = twdAmount * rate;
+            if (this.currencyCode === 'JPY' || this.currencyCode === 'TWD') {
+                return Math.round(converted).toLocaleString();
+            } else {
+                return converted.toFixed(2).toLocaleString();
+            }
+        },
+
+        setCurrency(symbol) {
+            const map = { 'NT$': 'TWD', '$': 'USD', '¥': 'JPY', '€': 'EUR' };
+            this.currencyCode = map[symbol] || 'TWD';
         }
     };
 
-    function toggleLang() {
-        currentLang = currentLang === 'en' ? 'zh' : 'en';
-        document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = dict[currentLang][el.getAttribute('data-i18n')]; });
-        document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = dict[currentLang][el.getAttribute('data-i18n-ph')]; });
-        renderCart(); 
-    }
-
-    function closeModal() {
-        document.getElementById('member-modal').style.opacity = '0';
-        setTimeout(() => document.getElementById('member-modal').style.display = 'none', 500);
-    }
+    // ==========================================
+    // 2. DataStore: 集中管理系統狀態與全域變數
+    // ==========================================
+    const DataStore = {
+        sysConfig: { currency: 'NT$', goldThresh: 30000, silverThresh: 15000 },
+        products: {
+            sizes: [
+                { id: 's_a0', name: 'A0 Massive', price: 800, cost: 400, active: true },
+                { id: 's_a1', name: 'A1 Poster', price: 400, cost: 200, active: true },
+                { id: 's_a2', name: 'A2 Display', price: 200, cost: 100, active: true },
+                { id: 's_a3', name: 'A3 Wide', price: 100, cost: 50, active: true },
+                { id: 's_a4', name: 'A4 Standard', price: 50, cost: 25, active: true }
+            ],
+            materials: [
+                { id: 'm_matte', name: 'Premium Matte', priceMult: 1.0, costMult: 1.0, active: true },
+                { id: 'm_fineart', name: 'Fine Art Acid-Free', priceMult: 1.8, costMult: 2.0, active: true }
+            ]
+        },
+        orders: [],
+        members: [],
+        tasks: [],
+        shopCart: { items: [], total: 0, orderSeq: 2, currentPreview: 0 },
+        posCart: { items: [], total: 0, currentPreview: 0 },
+        isClockedIn: false,
+        chartRendered: false
+    };
 
     // ==========================================
-    // 2. 炫技：動態數字滾動引擎
+    // 3. I18nManager: 多國語系與翻譯引擎
     // ==========================================
-    function animateValue(obj, start, end, duration) {
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            obj.innerHTML = Math.floor(progress * (end - start) + start);
-            if (progress < 1) window.requestAnimationFrame(step);
-        };
-        window.requestAnimationFrame(step);
-    }
-
-    let currentPreviewPrice = 0;
-    let currentTotal = 0;
-
-    // ==========================================
-    // 3. 核心邏輯與結帳 (加入智慧合併邏輯)
-    // ==========================================
-    let cart = [];
-    let orderSeq = 1;
-
-    function calcPreview() {
-        const size = parseFloat(document.getElementById('size').value);
-        const material = parseFloat(document.getElementById('material').value);
-        const qty = parseInt(document.getElementById('qty').value) || 1;
-        const newPrice = Math.round(size * material * qty);
-        
-        animateValue(document.getElementById('preview-price'), currentPreviewPrice, newPrice, 400);
-        currentPreviewPrice = newPrice;
-    }
-
-    function addToCart() {
-        const selectBox = document.getElementById('size');
-        const matBox = document.getElementById('material');
-        
-        // 抓取尺寸與材質的代號 (例如: A4, Matte) 組合出唯一商品名稱
-        const sizeName = selectBox.options[selectBox.selectedIndex].dataset.name; 
-        const matName = matBox.options[matBox.selectedIndex].dataset.name;
-        const itemName = `${sizeName} (${matName})`; // 例如：A4 (Matte)
-
-        const qty = parseInt(document.getElementById('qty').value) || 1;
-        const unitPrice = Math.round(parseFloat(selectBox.value) * parseFloat(matBox.value)); // 單件價格
-        const totalPrice = unitPrice * qty; // 此次加入的總價
-
-        // 智慧合併邏輯：尋找購物車內是否已有相同名稱的商品
-        const existingIndex = cart.findIndex(item => item.name === itemName);
-
-        if (existingIndex > -1) {
-            // 如果已經存在，直接累加數量和價格
-            cart[existingIndex].qty += qty;
-            cart[existingIndex].price += totalPrice;
-        } else {
-            // 如果不存在，新增一筆資料
-            cart.push({ name: itemName, qty: qty, price: totalPrice });
+    const I18nManager = {
+        current: 'en',
+        dict: {
+            en: {
+                btnLang: "Language: EN/ZH/JA", tabLogin: "LOGIN", tabRegister: "REGISTER", phAccount: "Account ID", phPassword: "Password", phName: "Full Name", phPhone: "Phone Number", phEmail: "Email Address", phCompany: "Company / VAT", phNotes: "Order Notes", phSource: "How did you hear about us?",
+                btnLogin: "SIGN IN", btnGuest: "Guest Access", btnRegister: "CREATE ACCOUNT", btnReLogin: "MEMBER LOGIN", btnTrack: "TRACK ORDER", btnInfo: "SYSTEM INFO",
+                infoTitle: "ABOUT PRO CRM", trackTitle: "ORDER TRACKING", phOrderId: "Order ID", btnSearch: "SEARCH",
+                configTitle: "Parameters", uploadText: "Drop file here or click to upload", labelSize: "SIZE", labelPaper: "PAPER", labelCopies: "COPIES", estCost: "EST. COST", btnAdd: "Add to Queue",
+                cartTitle: "Print Queue", total: "TOTAL", buyerTitle: "Client Info", btnCheckout: "Submit Order", orderConfirmed: "Order Confirmed", sysStandby: "SYSTEM STANDBY", awaiting: "AWAITING SUBMISSION", emptyCart: "Queue is empty.",
+                chatTitle: "Support AI", chatGreet: "Hello! How can I assist you?", chatReply: "Thanks! Agents are busy. Message received: ",
+                adminTitle: "SAAS", btnLogout: "LOGOUT", navDashboard: "Dashboard", navMembers: "CRM", navOrders: "Orders", navPos: "POS", navTasks: "Tasks", navTeam: "Team", navSettings: "Settings", navProducts: "Products", navCurrency: "Currency",
+                metRevenue: "Gross Revenue", metCost: "Total Cost", metProfit: "Net Profit", metOfficer: "Duty Officer", chartSales: "Historical Sales", chartReferrer: "Acquisition & Demographics",
+                chartSource: "Source", chartAge: "Age Demographics", staffOnline: "Online Staff", colType: "Type", colPrice: "Price (TWD)", colItems: "Item Name",
+                panelMembersTitle: "CRM Directory", colName: "Name", colPhone: "Phone", colEmail: "Email", colCompany: "Company", colOrders: "Orders", colSpent: "Total Spent", colTier: "VIP Tier", colAction: "Action", colAge: "Age/Gen", colSource: "Source", btnEdit: "Edit", editMemberTitle: "EDIT FULL PROFILE", btnSave: "Save Changes",
+                panelOrdersTitle: "Live Order Queue", colDate: "Date", colClient: "Client", colPayment: "Payment", colAmount: "Amount", colStatus: "Status (Click to Toggle)", statPending: "Pending", statDone: "Completed", posTitle: "Point of Sale", payCash: "Cash", payCard: "Credit Card", payTransfer: "Bank Transfer",
+                tasksTitle: "Production Workflow", teamTitle: "Activity Stream", btnClockIn: "CLOCK IN", btnClockOut: "CLOCK OUT",
+                panelCurrencyTitle: "Currency & Exchange Rates", liveRates: "Live Exchange Rates (Base: TWD)", lastUpdate: "Last Update: ",
+                setLogicTitle: "System Config", setDataTitle: "Data Mgmt", setProductTitle: "Product Management (Base TWD)", setAddProduct: "+ Add New Product",
+                btnSaveConfig: "Save Config", btnAddMember: "Add Member", btnExport: "Export CSV", labelCurrency: "Currency", labelGold: "Gold VIP", labelSilver: "Silver VIP",
+                srcAds: "Search / Ads", srcSocial: "Social Media", srcReferral: "Friend / Referral", srcOrganic: "Other",
+                crmSalesTitle: "Sales CRM", crmSalesDesc: "Manage opportunities, build relationships, and provide accurate quotes.", crmMarketingTitle: "Marketing CRM", crmMarketingDesc: "Understand customer needs and automate marketing tasks.", crmServiceTitle: "Service CRM", crmServiceDesc: "Build loyalty through perfect service experiences and automation.", crmEcomTitle: "E-commerce CRM", crmEcomDesc: "Provide an omnichannel commerce experience and give VIP treatment."
+            },
+            zh: {
+                btnLang: "語言切換: EN/中/日", tabLogin: "登入", tabRegister: "註冊", phAccount: "帳號", phPassword: "密碼", phName: "真實姓名", phPhone: "聯絡電話", phEmail: "電子信箱", phCompany: "公司抬頭 / 統編", phNotes: "訂單備註", phSource: "請問您如何得知我們？",
+                btnLogin: "登入系統", btnGuest: "以訪客身分繼續", btnRegister: "建立帳戶", btnReLogin: "會員登入", btnTrack: "訂單查詢", btnInfo: "系統介紹",
+                infoTitle: "關於專業 CRM", trackTitle: "訂單進度查詢", phOrderId: "訂單編號", btnSearch: "查詢",
+                configTitle: "規格設定", uploadText: "拖曳檔案至此，或點擊上傳", labelSize: "尺寸", labelPaper: "紙材", labelCopies: "數量", estCost: "單項預估", btnAdd: "加入佇列",
+                cartTitle: "輸出佇列", total: "總計金額", buyerTitle: "聯絡資訊", btnCheckout: "確認並結帳", orderConfirmed: "訂單已成立", sysStandby: "系統待命", awaiting: "等待提交", emptyCart: "佇列目前為空。",
+                chatTitle: "自動客服 AI", chatGreet: "您好！請問有什麼可以幫忙嗎？", chatReply: "感謝！目前客服忙線中，已記錄您的問題：",
+                adminTitle: "SAAS", btnLogout: "登出", navDashboard: "戰情看板", navMembers: "客戶管理(CRM)", navOrders: "接單管理", navPos: "現場下單", navTasks: "生產任務", navTeam: "企業動態", navSettings: "核心設定", navProducts: "商品管理", navCurrency: "匯率管理",
+                metRevenue: "總營業額", metCost: "總成本", metProfit: "淨利潤", metOfficer: "值班人員", chartSales: "商品歷史售出量", chartReferrer: "客戶來源與年齡層",
+                chartSource: "客戶來源", chartAge: "年齡分佈", staffOnline: "在線人員", colType: "類型", colPrice: "售價 (TWD)", colItems: "商品名稱",
+                panelMembersTitle: "CRM 客戶名錄", colName: "姓名", colPhone: "電話", colEmail: "信箱", colCompany: "公司/統編", colOrders: "下單次數", colSpent: "累積消費", colTier: "VIP 等級", colAction: "操作", colAge: "年齡/性別", colSource: "來源", btnEdit: "編輯", editMemberTitle: "完整編輯會員", btnSave: "儲存修改",
+                panelOrdersTitle: "即時接單看板", colDate: "日期", colClient: "客戶/統編", colPayment: "付款方式", colAmount: "金額", colStatus: "狀態 (點擊切換)", statPending: "製作中", statDone: "已完成", posTitle: "現場下單", payCash: "現金結帳", payCard: "信用卡", payTransfer: "銀行轉帳",
+                tasksTitle: "生產任務看板", teamTitle: "內部動態牆", btnClockIn: "上班打卡", btnClockOut: "下班打卡",
+                panelCurrencyTitle: "幣值切換與匯率", liveRates: "即時匯率表 (基準: TWD)", lastUpdate: "最後更新時間: ",
+                setLogicTitle: "核心邏輯設定", setDataTitle: "資料手動管理", setProductTitle: "商品設定 (基準 TWD)", setAddProduct: "+ 新增商品",
+                btnSaveConfig: "儲存設定", btnAddMember: "新增會員", btnExport: "匯出 CSV", labelCurrency: "切換幣值", labelGold: "金卡門檻", labelSilver: "銀卡門檻",
+                srcAds: "廣告 / 搜尋", srcSocial: "社群媒體", srcReferral: "親友推薦", srcOrganic: "其他來源",
+                crmSalesTitle: "銷售 CRM", crmSalesDesc: "業務人員能夠成功與客戶建立關係、自動挖掘潛在商機、提供準確報價。", crmMarketingTitle: "行銷 CRM", crmMarketingDesc: "協助企業了解每個客戶的喜好和需求，行銷自動化會在幕後進行。", crmServiceTitle: "服務 CRM", crmServiceDesc: "藉由打造完美的客戶服務體驗，提升熟客忠誠度並減少服務出錯。", crmEcomTitle: "電子商務 CRM", crmEcomDesc: "提供全通路商務體驗，識別各個通路的客戶，給予高價值客戶貴賓級待遇。"
+            },
+            ja: {
+                btnLang: "言語: EN/中/日", tabLogin: "ログイン", tabRegister: "登録", phAccount: "アカウントID", phPassword: "パスワード", phName: "氏名", phPhone: "電話番号", phEmail: "メール", phCompany: "会社名 / VAT", phNotes: "注文の備考", phSource: "何で私たちを知りましたか？",
+                btnLogin: "サインイン", btnGuest: "ゲストとして続行", btnRegister: "アカウント作成", btnReLogin: "会員ログイン", btnTrack: "注文追跡", btnInfo: "システム情報",
+                infoTitle: "システムについて", trackTitle: "注文追跡", phOrderId: "注文番号", btnSearch: "検索",
+                configTitle: "パラメータ", uploadText: "ファイルをドロップするかクリックしてアップロード", labelSize: "サイズ", labelPaper: "用紙", labelCopies: "部数", estCost: "予想費用", btnAdd: "追加",
+                cartTitle: "印刷キュー", total: "合計", buyerTitle: "顧客情報", btnCheckout: "注文を確定", orderConfirmed: "注文が確定しました", sysStandby: "システム待機中", awaiting: "提出待ち", emptyCart: "キューは空です。",
+                chatTitle: "サポート AI", chatGreet: "こんにちは！印刷注文について何かお手伝いしましょうか？", chatReply: "ありがとうございます！メッセージを受け取りました：",
+                adminTitle: "SAAS", btnLogout: "ログアウト", navDashboard: "ダッシュボード", navMembers: "顧客管理", navOrders: "注文管理", navPos: "POS注文", navTasks: "生産タスク", navTeam: "チーム動向", navSettings: "設定", navProducts: "製品管理", navCurrency: "為替レート",
+                metRevenue: "総収益", metCost: "総費用", metProfit: "純利益", metOfficer: "当直担当者", chartSales: "過去の販売実績", chartReferrer: "顧客獲得と属性",
+                chartSource: "獲得チャネル", chartAge: "年齢層", staffOnline: "オンラインスタッフ", colType: "種類", colPrice: "価格 (TWD)", colItems: "製品名",
+                panelMembersTitle: "CRM ディレクトリ", colName: "氏名", colPhone: "電話", colEmail: "メール", colCompany: "会社名", colOrders: "注文数", colSpent: "総支出", colTier: "VIPランク", colAction: "操作", colAge: "年齢/性別", colSource: "獲得元", btnEdit: "編集", editMemberTitle: "プロフィール編集", btnSave: "変更を保存",
+                panelOrdersTitle: "リアルタイム注文キュー", colDate: "日付", colClient: "顧客", colPayment: "支払方法", colAmount: "金額", colStatus: "ステータス (切替)", statPending: "保留中", statDone: "完了", posTitle: "販売時点情報管理", payCash: "現金", payCard: "クレジットカード", payTransfer: "銀行振込",
+                tasksTitle: "生産ワークフロー", teamTitle: "アクティビティストリーム", btnClockIn: "出勤", btnClockOut: "退勤",
+                panelCurrencyTitle: "通貨と為替レート", liveRates: "リアルタイム為替レート (基準: TWD)", lastUpdate: "最終更新: ",
+                setLogicTitle: "システム設定", setDataTitle: "データ管理", setProductTitle: "製品設定 (基準 TWD)", setAddProduct: "+ 製品を追加",
+                btnSaveConfig: "設定を保存", btnAddMember: "メンバー追加", btnExport: "CSV出力", labelCurrency: "通貨", labelGold: "ゴールドVIP", labelSilver: "シルバーVIP",
+                srcAds: "検索 / 広告", srcSocial: "SNS", srcReferral: "紹介", srcOrganic: "その他",
+                crmSalesTitle: "販売 CRM", crmSalesDesc: "機会を管理し、関係を構築し、正確な見積もりを提供します。", crmMarketingTitle: "マーケティング CRM", crmMarketingDesc: "顧客のニーズを理解し、マーケティングタスクを自動化します。", crmServiceTitle: "サービス CRM", crmServiceDesc: "完璧なサービス体験と自動化を通じてロイヤルティを構築します。", crmEcomTitle: "Eコマース CRM", crmEcomDesc: "オムニチャネルコマース体験を提供し、VIP待遇を与えます。"
+            }
+        },
+        getText(key) { return this.dict[this.current][key] || key; },
+        changeLang(val) {
+            this.current = val;
+            document.querySelectorAll('[data-i18n]').forEach(el => el.innerHTML = this.getText(el.getAttribute('data-i18n')));
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = this.getText(el.getAttribute('data-i18n-ph')));
+            ShopEngine.renderCart(); ShopEngine.renderPosCart();
+            if(!document.getElementById('admin-view').classList.contains('hidden')) { 
+                AdminEngine.renderMockTables(); AdminEngine.renderTasks(); AdminEngine.renderRatesTable();
+                document.getElementById('btn-clock').innerHTML = DataStore.isClockedIn ? this.getText('btnClockOut') : this.getText('btnClockIn'); 
+            }
         }
+    };
+
+    // ==========================================
+    // 4. UIManager: 介面互動與動畫
+    // ==========================================
+    const UIManager = {
+        switchAuthTab(tab) {
+            document.getElementById('tab-login').classList.remove('active'); document.getElementById('tab-register').classList.remove('active');
+            document.getElementById('form-login').classList.add('hidden'); document.getElementById('form-register').classList.add('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('active'); document.getElementById(`form-${tab}`).classList.remove('hidden');
+        },
+        openModal(modalId) {
+            if(modalId !== 'edit-member-modal') document.getElementById('shop-view').classList.add('hidden');
+            const m = document.getElementById(modalId); m.classList.remove('hidden'); m.style.display = 'flex';
+            setTimeout(() => m.style.opacity = '1', 10);
+        },
+        closeModal(modalId) {
+            const m = document.getElementById(modalId); m.style.opacity = '0';
+            setTimeout(() => { m.style.display = 'none'; m.classList.add('hidden'); if(modalId !== 'edit-member-modal') document.getElementById('shop-view').classList.remove('hidden'); }, 500);
+        },
+        toggleChat() {
+            const win = document.getElementById('chat-window'); win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+        },
+        sendChat() {
+            const input = document.getElementById('chat-input'); const text = input.value.trim(); if(!text) return;
+            const body = document.getElementById('chat-body'); body.innerHTML += `<div class="chat-msg msg-user">${text}</div>`; input.value = ''; body.scrollTop = body.scrollHeight;
+            setTimeout(() => { body.innerHTML += `<div class="chat-msg msg-bot">${I18nManager.getText('chatReply')}"${text}"</div>`; body.scrollTop = body.scrollHeight; }, 800);
+        },
+        switchAdminTab(panelId) {
+            document.querySelectorAll('.admin-nav button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.admin-nav button[onclick="UIManager.switchAdminTab('${panelId}')"]`).classList.add('active');
+            document.getElementById(`panel-${panelId}`).classList.add('active');
+        },
+        animateTextValue(obj, text) {
+            obj.innerHTML = text;
+        },
         
-        renderCart();
-    }
-
-    function renderCart() {
-        const list = document.getElementById('cart-list');
-        list.innerHTML = '';
-        let sum = 0;
-
-        if (cart.length === 0) {
-            list.innerHTML = `<p style="color: var(--text-sub); font-size: 0.8rem; text-align: center;">${dict[currentLang].emptyCart}</p>`;
-        } else {
-            cart.forEach((item, index) => {
-                sum += item.price;
-                // 在這裡我們使用 * 符號來顯示數量 (例如：A4 (Matte) * 3)
-                list.innerHTML += `
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px dashed var(--card-border);">
-                        <span>${item.name} * ${item.qty}</span>
-                        <span>$${item.price} <button onclick="removeItem(${index})" style="color:#ff4757; background:none; border:none; cursor:pointer;">×</button></span>
-                    </div>`;
-            });
+        changeCurrency(val) {
+            DataStore.sysConfig.currency = val;
+            CurrencyEngine.setCurrency(val);
+            
+            const shopSelect = document.getElementById('shop-currency');
+            const adminSelect = document.getElementById('admin-currency');
+            if(shopSelect) shopSelect.value = val;
+            if(adminSelect) adminSelect.value = val;
+            
+            this.updateCurrencyUI();
+        },
+        updateCurrencyUI() {
+            document.querySelectorAll('.sys-currency').forEach(el => el.innerText = DataStore.sysConfig.currency);
+            ShopEngine.renderCart(); ShopEngine.renderPosCart(); ShopEngine.calcPreview(); ShopEngine.calcPosPreview();
+            AdminEngine.renderProductManager();
+            if(!document.getElementById('admin-view').classList.contains('hidden')) { AdminEngine.initAdminDashboard(); AdminEngine.renderMockTables(); }
         }
-        
-        animateValue(document.getElementById('final-total'), currentTotal, sum, 500);
-        currentTotal = sum;
-    }
-
-    function removeItem(index) { cart.splice(index, 1); renderCart(); }
-
-    function checkout() {
-        const name = document.getElementById('buyer-name').value;
-        const phone = document.getElementById('buyer-phone').value;
-
-        if (cart.length === 0) { alert(currentLang === 'en' ? 'Queue is empty!' : '佇列是空的！'); return; }
-        if (!name || !phone) { alert(currentLang === 'en' ? 'Please fill in Client Info.' : '請填寫完整的聯絡資訊。'); return; }
-
-        const randomStr = Math.random().toString(36).toUpperCase().substring(2, 8); 
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const date = String(today.getDate()).padStart(2, '0');
-        const dateStr = `${year}${month}${date}`;
-        const seqStr = String(orderSeq++).padStart(4, '0');
-
-        const orderId = `${randomStr}-${dateStr}-${seqStr}`;
-
-        document.getElementById('r-id').innerText = "ID: " + orderId;
-        document.getElementById('r-barcode').innerText = `*${orderId}*`; 
-        
-        document.getElementById('receipt-card').classList.remove('hidden');
-    }
+    };
 
     // ==========================================
-    // 4. 炫技：3D 游標追蹤引擎
+    // 5. AuthEngine: 認證系統
     // ==========================================
-    document.addEventListener("DOMContentLoaded", () => {
-        const cards = document.querySelectorAll('.glass-card');
+    const AuthEngine = {
+        handleLogin() {
+            if (document.getElementById('login-acc').value === 'admin' && document.getElementById('login-pwd').value === '1234') { 
+                document.getElementById('auth-modal').style.display = 'none'; 
+                document.getElementById('shop-view').classList.add('hidden'); 
+                document.getElementById('admin-view').style.display = 'block'; 
+                document.getElementById('admin-view').classList.remove('hidden'); 
+                document.body.classList.remove('shop-mode');
+                document.body.classList.add('admin-mode');
+                AdminEngine.initAdminDashboard(); 
+            } else { alert("Invalid credentials."); }
+        },
+        handleRegister() {
+            const name = document.getElementById('reg-name').value; const phone = document.getElementById('reg-phone').value; const email = document.getElementById('reg-email').value;
+            if(!name || !phone || !email) { alert("Missing fields"); return; }
+            alert("Success!"); document.getElementById('buyer-name').value = name; document.getElementById('buyer-phone').value = phone; document.getElementById('buyer-email').value = email; UIManager.closeModal('auth-modal');
+        },
+        logoutAdmin() {
+            document.body.classList.add('shop-mode'); document.body.classList.remove('admin-mode'); location.reload();
+        }
+    };
+
+    // ==========================================
+    // 6. ShopEngine: 購物車與動態換算
+    // ==========================================
+    const ShopEngine = {
+        renderProductSelects() {
+            const sHtml = DataStore.products.sizes.filter(s=>s.active).map(s=>`<option value="${s.price}" data-cost="${s.cost}" data-name="${s.name}">${s.name}</option>`).join('');
+            const mHtml = DataStore.products.materials.filter(m=>m.active).map(m=>`<option value="${m.priceMult}" data-costm="${m.costMult}" data-name="${m.name}">${m.name} (x${m.priceMult})</option>`).join('');
+            document.getElementById('size').innerHTML = sHtml; document.getElementById('material').innerHTML = mHtml;
+            document.getElementById('pos-size').innerHTML = sHtml; document.getElementById('pos-material').innerHTML = mHtml;
+            this.calcPreview(); this.calcPosPreview();
+        },
+        _calcLogic(sBoxId, mBoxId, qId, previewId, isPos) {
+            const s = document.getElementById(sBoxId); const m = document.getElementById(mBoxId); if(!s.options.length || !m.options.length) return;
+            const price = parseFloat(s.value); const mult = parseFloat(m.value); const q = parseInt(document.getElementById(qId).value) || 1;
+            const newPriceTWD = Math.round(price * mult * q);
+            const cartRef = isPos ? DataStore.posCart : DataStore.shopCart;
+            cartRef.currentPreview = newPriceTWD;
+            UIManager.animateTextValue(document.getElementById(previewId), CurrencyEngine.convert(newPriceTWD));
+        },
+        calcPreview() { this._calcLogic('size', 'material', 'qty', 'preview-price', false); },
+        calcPosPreview() { this._calcLogic('pos-size', 'pos-material', 'pos-qty', 'pos-preview-price', true); },
         
-        setTimeout(() => {
-            cards.forEach(card => {
-                card.addEventListener('mousemove', e => {
-                    if (window.innerWidth <= 900) return; 
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    
-                    const rotateX = ((y - centerY) / centerY) * -8;
-                    const rotateY = ((x - centerX) / centerX) * 8;
+        _addToCartLogic(sBoxId, mBoxId, qId, isPos) {
+            const sBox = document.getElementById(sBoxId); const mBox = document.getElementById(mBoxId); if(!sBox.options.length || !mBox.options.length) return;
+            const sOpt = sBox.options[sBox.selectedIndex]; const mOpt = mBox.options[mBox.selectedIndex];
+            const name = `${sOpt.dataset.name} (${mOpt.dataset.name})`; const qty = parseInt(document.getElementById(qId).value) || 1;
+            const price = Math.round(parseFloat(sOpt.value) * parseFloat(mOpt.value)) * qty; const cost = Math.round(parseFloat(sOpt.dataset.cost) * parseFloat(mOpt.dataset.costm)) * qty;
+            
+            const cartRef = isPos ? DataStore.posCart : DataStore.shopCart;
+            const ex = cartRef.items.findIndex(i => i.name === name);
+            if(ex > -1) { cartRef.items[ex].qty += qty; cartRef.items[ex].price += price; cartRef.items[ex].cost += cost; } else { cartRef.items.push({ name, qty, price, cost }); }
+            isPos ? this.renderPosCart() : this.renderCart();
+        },
+        addToCart() { this._addToCartLogic('size', 'material', 'qty', false); },
+        addToPosCart() { this._addToCartLogic('pos-size', 'pos-material', 'pos-qty', true); },
 
-                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-                    card.style.transition = 'none'; 
-                    card.style.borderColor = 'rgba(255,255,255,0.2)';
-                    card.style.boxShadow = '0 15px 40px var(--accent-glow)';
-                });
-
-                card.addEventListener('mouseleave', () => {
-                    if (window.innerWidth <= 900) return;
-                    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-                    card.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.5s, box-shadow 0.5s';
-                    card.style.borderColor = 'var(--card-border)';
-                    card.style.boxShadow = 'none';
-                });
+        _renderCartLogic(listId, totalId, isPos) {
+            const list = document.getElementById(listId); list.innerHTML = ''; let sumTWD = 0;
+            const cartRef = isPos ? DataStore.posCart : DataStore.shopCart;
+            
+            if(cartRef.items.length === 0) list.innerHTML = `<p style="color:var(--text-sub); font-size:0.8rem; text-align:center;">${I18nManager.getText('emptyCart')}</p>`;
+            else cartRef.items.forEach((i, idx) => { 
+                sumTWD += i.price; 
+                list.innerHTML += `<div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:8px 0;border-bottom:1px dashed var(--card-border);"><span>${i.name} * ${i.qty}</span><span><span class="sys-currency">${DataStore.sysConfig.currency}</span>${CurrencyEngine.convert(i.price)} <button onclick="ShopEngine.removeItem(${idx}, ${isPos})" style="color:#ff4757;background:none;border:none;cursor:pointer;">×</button></span></div>`; 
             });
-        }, 1500); 
-    });
+            
+            cartRef.total = sumTWD;
+            UIManager.animateTextValue(document.getElementById(totalId), CurrencyEngine.convert(sumTWD));
+        },
+        renderCart() { this._renderCartLogic('cart-list', 'final-total', false); },
+        renderPosCart() { this._renderCartLogic('pos-cart-list', 'pos-total', true); },
+        removeItem(idx, isPos) { if(isPos){ DataStore.posCart.items.splice(idx,1); this.renderPosCart(); } else { DataStore.shopCart.items.splice(idx,1); this.renderCart(); } },
 
-    calcPreview();
-    renderCart();
+        _checkoutLogic(phoneId, nameId, compId, payId, sourceId, notesId, isPos) {
+            const cartRef = isPos ? DataStore.posCart : DataStore.shopCart;
+            const phone = document.getElementById(phoneId).value; if(cartRef.items.length===0 || !phone) { alert('Missing info or cart empty.'); return; }
+            
+            // 使用實際商品成本進行加總，取代原本固定的利潤百分比
+            const totalCost = cartRef.items.reduce((s, item) => s + item.cost, 0);
+            
+            const rStr = Math.random().toString(36).toUpperCase().substring(2, 8); const d = new Date(); const dStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+            const oId = `${isPos?'POS-':''}${rStr}-${dStr}-${String(DataStore.shopCart.orderSeq++).padStart(4,'0')}`;
+            
+            const companyInfo = document.getElementById(compId) ? document.getElementById(compId).value : '';
+            const paymentInfo = document.getElementById(payId) ? document.getElementById(payId).value : 'Online Card';
+            const notes = document.getElementById(notesId) ? document.getElementById(notesId).value : '';
+            
+            const srcSel = document.getElementById(sourceId);
+            const sourceInfo = srcSel && srcSel.value ? srcSel.value : 'Organic';
+            
+            let clientDisplay = companyInfo ? `${document.getElementById(nameId).value} (${companyInfo})` : (document.getElementById(nameId).value || 'Guest');
+            if(notes) clientDisplay += ` - [${notes}]`;
 
+            const newOrder = { oId, phone, client: clientDisplay, payment: paymentInfo, date: d.toISOString().split('T')[0], items: `${cartRef.items.length} Product(s)`, amount: cartRef.total, cost: totalCost, status: 'pending' };
+            DataStore.orders.push(newOrder);
+            if(DataStore.orders.length > 0) { DataStore.orders.unshift(newOrder); } 
+            
+            DataStore.tasks.push({ id: oId, client: clientDisplay, items: `${cartRef.items.length} Item(s)`, stage: 'prep' });
+            
+            let memberIdx = DataStore.members.findIndex(m => m.phone === phone);
+            if(memberIdx === -1 && document.getElementById(nameId).value) {
+                DataStore.members.unshift({ id: `USR-${String(DataStore.members.length+1).padStart(3,'0')}`, name: document.getElementById(nameId).value, company: companyInfo, phone: phone, email: '', age: 25, gender: 'Unknown', source: sourceInfo, orders: 1, spent: cartRef.total });
+            } else if (memberIdx !== -1) {
+                DataStore.members[memberIdx].orders += 1; DataStore.members[memberIdx].spent += cartRef.total;
+            }
+            
+            AdminEngine.addTeamLog(`New ${isPos?'POS':'Web'} Order: ${oId} (Source: ${sourceInfo})`, true);
+            
+            if(!isPos) {
+                const rc = document.getElementById('receipt-card'); document.getElementById('r-id').innerText = "ID: " + oId; document.getElementById('r-barcode').innerText = `*${oId}*`; document.getElementById('r-status').innerText = I18nManager.getText('orderConfirmed'); rc.classList.add('active');
+            } else { alert(`Order Created: ${oId}`); document.getElementById('pos-buyer-name').value=''; document.getElementById('pos-buyer-phone').value=''; document.getElementById('pos-buyer-email').value=''; document.getElementById('pos-buyer-company').value=''; }
+            
+            cartRef.items = []; isPos ? this.renderPosCart() : this.renderCart();
+            if(!document.getElementById('admin-view').classList.contains('hidden')) { AdminEngine.renderTasks(); AdminEngine.renderMockTables(); AdminEngine.initAdminDashboard(); }
+        },
+        checkout() { this._checkoutLogic('buyer-phone', 'buyer-name', 'buyer-company', null, 'buyer-source', 'buyer-notes', false); },
+        checkoutPos() { this._checkoutLogic('pos-buyer-phone', 'pos-buyer-name', 'pos-buyer-company', 'pos-buyer-payment', 'pos-buyer-source', null, true); },
+
+        searchOrder() {
+            const sId = document.getElementById('track-id').value.trim(); const sPhone = document.getElementById('track-phone').value.trim(); if(!sId || !sPhone) return;
+            const o = DataStore.orders.find(o => o.oId === sId && o.phone === sPhone); const rDiv = document.getElementById('track-result'); rDiv.classList.remove('hidden');
+            if (o) { let c = o.status === 'pending' ? '#ffab00' : '#2ed573'; let sText = o.status === 'pending' ? I18nManager.getText('statPending') : I18nManager.getText('statDone'); rDiv.innerHTML = `<h3 style="margin:5px 0; color:var(--text-main); font-family:monospace;">${o.oId}</h3><p style="margin:5px 0; font-size:0.9rem;">Date: <span style="color:white;">${o.date}</span></p><p style="margin:5px 0; font-size:0.9rem;">Total: <span style="color:var(--accent); font-weight:bold;">${DataStore.sysConfig.currency} ${CurrencyEngine.convert(o.amount)}</span></p><div style="margin-top:10px; padding:8px; border:1px solid ${c}; color:${c}; border-radius:8px; text-align:center; font-weight:bold;">${sText}</div>`; } 
+            else { rDiv.innerHTML = `<p style="margin:0; color:#ff4757; text-align:center;">Not found.</p>`; }
+        }
+    };
+
+    // ==========================================
+    // 7. AdminEngine: 後台管理與換算
+    // ==========================================
+    const AdminEngine = {
+        getVipTier(spentTWD) { if(spentTWD > DataStore.sysConfig.goldThresh) return { class: 'vip-gold', text: 'GOLD' }; if(spentTWD > DataStore.sysConfig.silverThresh) return { class: 'vip-silver', text: 'SILVER' }; return { class: 'vip-member', text: 'MEMBER' }; },
+        
+        initAdminDashboard() {
+            Chart.defaults.color = 'rgba(255, 255, 255, 0.7)'; Chart.defaults.font.family = "'Montserrat', 'Noto Sans TC', sans-serif";
+            if(DataStore.members.length === 0) {
+                DataStore.members = Array.from({length: 50}, (_, i) => ({ id: `USR-${String(i+1).padStart(3,'0')}`, name: `Client_${Math.random().toString(36).substr(2,4).toUpperCase()}`, company: Math.random() > 0.5 ? 'Design Corp' : '', phone: `09${Math.floor(Math.random()*90000000+10000000)}`, email: `client${i}@mail.com`, age: Math.floor(Math.random() * 42) + 18, gender: Math.random() > 0.4 ? 'Male' : 'Female', source: ['Google Ads', 'Organic', 'Social Media', 'Referral'][Math.floor(Math.random()*4)], spent: Math.floor(Math.random() * 45000) + 2000, orders: Math.floor(Math.random() * 15) + 1 }));
+                DataStore.tasks = [ { id: 'ORD-XA12-001', client: 'John Doe', items: 'A1 Poster x2', stage: 'prep' }, { id: 'ORD-BC34-002', client: 'Design Corp (VAT:123)', items: 'A3 Wide x5', stage: 'print' } ];
+            }
+            if(DataStore.orders.length < 10) { 
+                const fakeOrders = Array.from({length: 15}, (_, i) => ({ oId: `ORD-${Math.random().toString(36).toUpperCase().substring(2, 6)}-${String(i+1).padStart(3,'0')}`, date: `2024-04-28`, client: 'John Doe', payment: 'Credit Card', items: `A4 Print`, amount: Math.floor(Math.random()*5000)+500, cost: Math.floor(Math.random()*2000)+200, status: Math.random() > 0.3 ? 'done' : 'pending' }));
+                DataStore.orders = [...DataStore.orders, ...fakeOrders];
+            }
+            
+            const totalRevTWD = DataStore.orders.reduce((s, o) => s + o.amount, 0); const totalCostTWD = DataStore.orders.reduce((s, o) => s + (o.cost || o.amount * 0.5), 0); 
+            
+            UIManager.animateTextValue(document.getElementById('dash-rev'), CurrencyEngine.convert(totalRevTWD)); 
+            UIManager.animateTextValue(document.getElementById('dash-cost'), CurrencyEngine.convert(totalCostTWD)); 
+            UIManager.animateTextValue(document.getElementById('dash-profit'), CurrencyEngine.convert(totalRevTWD - totalCostTWD));
+
+            if(!DataStore.chartRendered) {
+                new Chart(document.getElementById('salesChart'), { type: 'bar', data: { labels: ['A0', 'A1', 'A2', 'A3', 'A4'], datasets: [{ data: [120, 350, 420, 890, 1500], backgroundColor: '#00e5ff', borderRadius: 4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+                const sCount = {}; DataStore.members.forEach(m => { sCount[m.source] = (sCount[m.source] || 0) + 1; });
+                new Chart(document.getElementById('sourceChart'), { type: 'doughnut', data: { labels: Object.keys(sCount), datasets: [{ data: Object.values(sCount), backgroundColor: ['#00e5ff', '#ff007f', '#7000ff', '#ffffff88'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } } });
+                const aGroups = { '18-25':0, '26-35':0, '36-45':0, '46+':0 }; DataStore.members.forEach(m => { if(m.age <= 25) aGroups['18-25']++; else if(m.age <= 35) aGroups['26-35']++; else if(m.age <= 45) aGroups['36-45']++; else aGroups['46+']++; });
+                new Chart(document.getElementById('ageChart'), { type: 'bar', indexAxis: 'y', data: { labels: Object.keys(aGroups), datasets: [{ data: Object.values(aGroups), backgroundColor: '#ff007f', borderRadius: 4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+                DataStore.chartRendered = true;
+            }
+            this.renderMockTables(); this.renderProductManager(); this.renderTasks(); this.renderRatesTable();
+        },
+
+        renderRatesTable() {
+            const tbody = document.getElementById('rates-table-body');
+            const timeTag = document.getElementById('rate-update-time');
+            if(!tbody) return;
+            let html = '';
+            const targetCurrencies = ['USD', 'JPY', 'EUR'];
+            targetCurrencies.forEach(c => {
+                const rate = CurrencyEngine.rates[c] || 'N/A';
+                html += `<tr><td style="font-weight:bold; color:var(--accent);">${c}</td><td>${rate}</td></tr>`;
+            });
+            tbody.innerHTML = html;
+            if(timeTag) timeTag.innerHTML = `${I18nManager.getText('lastUpdate')} ${CurrencyEngine.lastUpdateText} <span style="color:var(--text-main);">| Source: ExchangeRate-API</span>`;
+        },
+
+        renderMockTables() {
+            const mBody = document.getElementById('member-table-body'); mBody.innerHTML = '';
+            DataStore.members.forEach(m => { const vip = this.getVipTier(m.spent); mBody.innerHTML += `<tr><td>${m.id}</td><td>${m.name}</td><td>${m.phone}</td><td style="color:var(--text-sub);">${m.age} / ${m.gender.charAt(0)}</td><td style="color:var(--text-sub);">${m.source}</td><td>${m.orders}</td><td><span class="sys-currency">${DataStore.sysConfig.currency}</span> ${CurrencyEngine.convert(m.spent)}</td><td><span class="badge ${vip.class}">${vip.text}</span></td><td><button class="btn-small btn-outline" onclick="AdminEngine.editMember('${m.id}')">${I18nManager.getText('btnEdit')}</button></td></tr>`; });
+            const oBody = document.getElementById('order-table-body'); oBody.innerHTML = '';
+            DataStore.orders.forEach(o => { oBody.innerHTML += `<tr><td><span style="font-family:monospace; color:var(--accent);">${o.oId}</span></td><td>${o.date}</td><td>${o.client}</td><td>${o.payment}</td><td><span class="sys-currency">${DataStore.sysConfig.currency}</span> ${o.cost ? CurrencyEngine.convert(o.cost) : '-'}</td><td><span class="sys-currency">${DataStore.sysConfig.currency}</span> ${CurrencyEngine.convert(o.amount)}</td><td><span class="badge ${o.status === 'pending' ? 'badge-pending' : 'badge-done'} clickable-badge" onclick="AdminEngine.toggleOrderStatus('${o.oId}')">${o.status === 'pending' ? I18nManager.getText('statPending') : I18nManager.getText('statDone')}</span></td></tr>`; });
+        },
+
+        editMember(id) { const member = DataStore.members.find(m => m.id === id); if(member) { document.getElementById('edit-m-id').value = id; document.getElementById('edit-m-name').value = member.name; document.getElementById('edit-m-phone').value = member.phone; document.getElementById('edit-m-email').value = member.email || ''; document.getElementById('edit-m-company').value = member.company || ''; document.getElementById('edit-m-age').value = member.age; document.getElementById('edit-m-gender').value = member.gender; document.getElementById('edit-m-source').value = member.source; document.getElementById('edit-m-orders').value = member.orders; document.getElementById('edit-m-spent').value = member.spent; UIManager.openModal('edit-member-modal'); } },
+        saveMemberEdit() { const id = document.getElementById('edit-m-id').value; const member = DataStore.members.find(m => m.id === id); if(member) { member.name = document.getElementById('edit-m-name').value; member.phone = document.getElementById('edit-m-phone').value; member.email = document.getElementById('edit-m-email').value; member.company = document.getElementById('edit-m-company').value; member.age = parseInt(document.getElementById('edit-m-age').value) || member.age; member.gender = document.getElementById('edit-m-gender').value; member.source = document.getElementById('edit-m-source').value; member.orders = parseInt(document.getElementById('edit-m-orders').value) || member.orders; member.spent = parseInt(document.getElementById('edit-m-spent').value) || member.spent; this.renderMockTables(); this.initAdminDashboard(); UIManager.closeModal('edit-member-modal'); } },
+        
+        toggleOrderStatus(oId) { 
+            const order = DataStore.orders.find(o => o.oId === oId); if(!order) return;
+            let newStat = order.status === 'pending' ? 'done' : 'pending'; order.status = newStat; 
+            let task = DataStore.tasks.find(t => t.id === oId); if(task) { task.stage = newStat === 'done' ? 'done' : 'prep'; }
+            this.renderMockTables(); this.renderTasks();
+        },
+
+        toggleClockIn() { DataStore.isClockedIn = !DataStore.isClockedIn; const btn = document.getElementById('btn-clock'); if(DataStore.isClockedIn) { btn.style.background = 'rgba(255,71,87,0.1)'; btn.style.color = '#ff4757'; btn.style.borderColor = '#ff4757'; btn.innerHTML = I18nManager.getText('btnClockOut'); this.addTeamLog('Admin_01 Clocked OUT.', true); } else { btn.style.background = 'rgba(46,213,115,0.1)'; btn.style.color = '#2ed573'; btn.style.borderColor = '#2ed573'; btn.innerHTML = I18nManager.getText('btnClockIn'); this.addTeamLog('Admin_01 Clocked IN.', true); } },
+        addTeamLog(msg, isSys = false) { const feed = document.getElementById('team-feed'); const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); feed.innerHTML += `<div class="stream-msg ${isSys?'system':''}"><div class="stream-time">${time}</div><strong>${isSys?'SYSTEM':'Admin_01'}:</strong> ${msg}</div>`; feed.scrollTop = feed.scrollHeight; },
+        sendTeamMsg() { const input = document.getElementById('team-input'); if(!input.value.trim()) return; this.addTeamLog(input.value); input.value = ''; },
+
+        renderTasks() {
+            ['prep', 'print', 'qc', 'done'].forEach(s => { const c = document.getElementById(`task-${s}`); c.innerHTML = c.firstElementChild.outerHTML; });
+            DataStore.tasks.forEach(t => {
+                const nextMap = { 'prep': 'print', 'print': 'qc', 'qc': 'done', 'done': null }; const next = nextMap[t.stage];
+                const btnHtml = next ? `<button class="btn-outline" style="width:100%; padding:5px; font-size:0.75rem;" onclick="AdminEngine.moveTask('${t.id}', '${next}')">MOVE TO ${next.toUpperCase()}</button>` : `<div style="text-align:center; color:#2ed573; font-weight:bold; font-size:0.75rem;">COMPLETED</div>`;
+                document.getElementById(`task-${t.stage}`).innerHTML += `<div class="kanban-card"><div style="font-weight:bold; color:var(--accent); font-family:monospace; margin-bottom:5px;">${t.id}</div><div style="font-size:0.9rem; color:white; margin-bottom:5px;">${t.client}</div><div style="color:var(--text-sub); margin-bottom:10px;">${t.items}</div>${btnHtml}</div>`;
+            });
+        },
+        moveTask(id, stage) { 
+            const t = DataStore.tasks.find(t => t.id === id); 
+            if(t) { 
+                t.stage = stage; this.addTeamLog(`Task ${id} moved to ${stage.toUpperCase()}`, true); 
+                let newStat = stage === 'done' ? 'done' : 'pending'; const order = DataStore.orders.find(o => o.oId === id); if(order) order.status = newStat;
+                this.renderTasks(); this.renderMockTables();
+            } 
+        },
+
+        saveSystemLogic() { 
+            DataStore.sysConfig.goldThresh = parseInt(document.getElementById('set-gold').value) || 30000; 
+            DataStore.sysConfig.silverThresh = parseInt(document.getElementById('set-silver').value) || 15000; 
+            alert(I18nManager.getText('btnSaveConfig') + ' ✓'); 
+            this.initAdminDashboard();
+        },
+        addManualMember() { const name = document.getElementById('set-m-name').value; const phone = document.getElementById('set-m-phone').value; const spent = parseInt(document.getElementById('set-m-spent').value) || 0; if(!name || !phone) return; DataStore.members.unshift({ id: `USR-${String(DataStore.members.length+1).padStart(3,'0')}`, name, phone, spent: spent, age: 25, gender: 'Unknown', source: 'Manual', orders: 0 }); document.getElementById('set-m-name').value = ''; document.getElementById('set-m-phone').value = ''; document.getElementById('set-m-spent').value = '0'; alert('Added!'); this.renderMockTables(); this.initAdminDashboard(); },
+        exportData() { let csv = "Order ID,Date,Client,Payment,Items,Amount(TWD),Cost(TWD),Status\n"; DataStore.orders.forEach(o => { csv += `${o.oId},${o.date},${o.client},${o.payment},${o.items},${o.amount},${o.cost},${o.status}\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.setAttribute('hidden', ''); a.setAttribute('href', url); a.setAttribute('download', 'Orders.csv'); document.body.appendChild(a); a.click(); document.body.removeChild(a); },
+
+        renderProductManager() {
+            const tbody = document.getElementById('product-table-body'); let html = '';
+            const makeRow = (p, type, isMat) => {
+                const statClass = p.active ? 'badge-done' : 'badge-pending'; const statText = p.active ? 'ACTIVE' : 'INACTIVE';
+                return `<tr>
+                    <td>${p.name}</td><td><span style="color:var(--text-sub); font-size:0.75rem;">${type}</span></td>
+                    <td><span class="sys-currency">NT$</span> <input type="number" id="p-price-${p.id}" value="${isMat ? p.priceMult : p.price}" style="width:70px; margin:0; padding:5px;" step="0.1"> ${isMat?'x':''}</td>
+                    <td><span class="sys-currency">NT$</span> <input type="number" id="p-cost-${p.id}" value="${isMat ? p.costMult : p.cost}" style="width:70px; margin:0; padding:5px;" step="0.1"> ${isMat?'x':''}</td>
+                    <td><span class="badge ${statClass} clickable-badge" onclick="AdminEngine.toggleProductActive('${p.id}')">${statText}</span></td>
+                    <td><button class="btn-small btn-outline" onclick="AdminEngine.saveProduct('${p.id}', ${isMat})">SAVE</button></td>
+                </tr>`;
+            };
+            DataStore.products.sizes.forEach(s => html += makeRow(s, 'Size', false)); DataStore.products.materials.forEach(m => html += makeRow(m, 'Material', true));
+            tbody.innerHTML = html;
+        },
+        toggleProductActive(id) { let p = DataStore.products.sizes.find(x=>x.id===id) || DataStore.products.materials.find(x=>x.id===id); if(p) { p.active = !p.active; this.renderProductManager(); ShopEngine.renderProductSelects(); } },
+        saveProduct(id, isMat) { let p = DataStore.products.sizes.find(x=>x.id===id) || DataStore.products.materials.find(x=>x.id===id); if(p) { const valP = parseFloat(document.getElementById(`p-price-${id}`).value); const valC = parseFloat(document.getElementById(`p-cost-${id}`).value); if(isMat) { p.priceMult = valP; p.costMult = valC; } else { p.price = valP; p.cost = valC; } ShopEngine.renderProductSelects(); alert('Product Updated!'); } },
+        addNewProduct() { const type = document.getElementById('new-p-type').value; const name = document.getElementById('new-p-name').value.trim(); const price = parseFloat(document.getElementById('new-p-price').value); const cost = parseFloat(document.getElementById('new-p-cost').value); if(!name || isNaN(price) || isNaN(cost)) return; if(type === 'size') { DataStore.products.sizes.push({ id: 's_' + Math.random().toString(36).substr(2, 6), name: name, price: price, cost: cost, active: true }); } else { DataStore.products.materials.push({ id: 'm_' + Math.random().toString(36).substr(2, 6), name: name, priceMult: price, costMult: cost, active: true }); } document.getElementById('new-p-name').value = ''; document.getElementById('new-p-price').value = ''; document.getElementById('new-p-cost').value = ''; this.renderProductManager(); ShopEngine.renderProductSelects(); alert("New Product Added!"); }
+    };
+
+    // ==========================================
+    // 8. App 系統初始化 (Lifecycle)
+    // ==========================================
+    const App = {
+        startAdminClock() {
+            const clk = document.getElementById('admin-clock');
+            if(clk) {
+                const now = new Date(); const ms = String(now.getMilliseconds()).padStart(3,'0');
+                clk.innerText = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${ms}`;
+            }
+            requestAnimationFrame(App.startAdminClock);
+        },
+        async init() {
+            await CurrencyEngine.fetchRates();
+
+            const loginAcc = document.getElementById('login-acc'); const loginPwd = document.getElementById('login-pwd');
+            const triggerLogin = (e) => { if(e.key === 'Enter') AuthEngine.handleLogin(); };
+            if(loginAcc) loginAcc.addEventListener('keypress', triggerLogin); if(loginPwd) loginPwd.addEventListener('keypress', triggerLogin);
+
+            this.startAdminClock();
+            ShopEngine.renderProductSelects(); 
+            
+            DataStore.orders.push({ oId: 'TEST-123456-0001', phone: '0912345678', client: 'Guest', payment: 'Online Card', date: '2024-04-28', items: '1x A1 Poster (Premium Matte)', amount: 400, cost: 200, status: 'pending' });
+            DataStore.tasks.push({ id: 'TEST-123456-0001', client: 'Guest', items: '1x A1 Poster (Premium Matte)', stage: 'prep' });
+
+            setTimeout(() => { document.querySelectorAll('#shop-view .glass-card').forEach(card => { card.addEventListener('mousemove', e => { if (window.innerWidth <= 900) return; const rect = card.getBoundingClientRect(); card.style.transform = `perspective(1000px) rotateX(${((e.clientY - rect.top - rect.height/2) / (rect.height/2)) * -8}deg) rotateY(${((e.clientX - rect.left - rect.width/2) / (rect.width/2)) * 8}deg) scale3d(1.02, 1.02, 1.02)`; card.style.transition = 'none'; card.style.borderColor = 'rgba(0, 229, 255, 0.4)'; card.style.boxShadow = '0 15px 40px var(--accent-glow)'; }); card.addEventListener('mouseleave', () => { if (window.innerWidth <= 900) return; card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`; card.style.transition = 'transform 0.5s, border-color 0.5s, box-shadow 0.5s'; card.style.borderColor = 'var(--card-border)'; card.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)'; }); }); }, 1500);
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", () => App.init());
 </script>
-
 </body>
 </html>
